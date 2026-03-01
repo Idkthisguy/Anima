@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Anima Editor</title>
+    <style>
+        :root {
+            --bg: #1e1e1e;
+            --panel: #2d2d2d;
+            --accent: #007acc;
+            --border: #3d3d3d;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout */
+        #header {
+            height: 35px;
+            background: var(--panel);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        #workspace {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Toolbar */
+        #toolbar {
+            width: 50px;
+            background: #252526;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 0;
+            gap: 12px;
+            border-right: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: #ccc;
+            padding: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: #3d3d3d;
+            color: white;
+        }
+
+        .tool-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Stage (The Zoom/Pan Area) */
+        #stage-container {
+            flex: 1;
+            background: #121212;
+            overflow: hidden;
+            position: relative;
+            cursor: crosshair;
+        }
+
+        #canvas-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: 0 0;
+        }
+
+        canvas {
+            background: white;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+            image-rendering: pixelated;
+        }
+
+        /* Timeline */
+        #timeline-panel {
+            height: 150px;
+            background: var(--panel);
+            border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        #frame-strip {
+            display: flex;
+            gap: 2px;
+            overflow-x: auto;
+            background: #111;
+            padding: 5px;
+            flex: 1;
+            border-radius: 4px;
+        }
+
+        .thumb {
+            min-width: 40px;
+            height: 100%;
+            background: #333;
+            border-radius: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .thumb.active {
+            border: 2px solid var(--accent);
+            color: white;
+        }
+
+        .thumb.has-data {
+            background: #444;
+            color: #aaa;
+        }
+
+        #cursor {
+            width: 20px;
+            height: 20px;
+            border: 1px solid white;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            mix-blend-mode: difference;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="cursor"></div>
+    <div id="header"><strong>ANIMA ENGINE</strong></div>
+
+    <div id="workspace">
+        <div id="toolbar">
+            <button class="tool-btn active" id="brushTool">🖌️</button>
+            <button class="tool-btn" id="rectTool">🟦</button>
+            <button class="tool-btn" id="eraseTool">🧽</button>
+            <div style="width: 30px; height: 1px; background: var(--border);"></div>
+            <input type="color" id="colorPicker" value="#000000"
+                style="width:30px; height:30px; border:none; padding:0; background:none;">
+            <input type="range" id="brushSize" min="1" max="100" value="5" vertical style="width: 40px;">
+        </div>
+
+        <div id="stage-container">
+            <div id="canvas-wrapper">
+                <canvas id="mainCanvas" width="1920" height="1080"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="timeline-panel">
+        <div class="controls">
+            <button id="playBtn"
+                style="padding: 5px 15px; background: var(--accent); border: none; color: white; border-radius: 3px;">▶
+                Play</button>
+            <label style="font-size: 12px;">FPS: <input type="number" id="fpsInput" value="12"
+                    style="width:40px; background:#111; color:white; border:1px solid #444;"></label>
+            <label style="font-size: 12px;"><input type="checkbox" id="loopToggle" checked> Loop</label>
+            <span id="frameCounter" style="font-size: 12px; color: #aaa;">Frame: 0</span>
+            <input type="range" id="frameSlider" min="0" max="60" value="0" style="flex: 1;">
+        </div>
+        <div id="frame-strip"></div>
+    </div>
+
+    <script type="module" src="renderer.js"></script>
+</body>
+
+</html>
