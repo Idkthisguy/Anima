@@ -82,7 +82,7 @@
             background: #121212;
             overflow: hidden;
             position: relative;
-            cursor: crosshair;
+            cursor: none;
         }
 
         #canvas-wrapper {
@@ -165,17 +165,18 @@
 
 <body>
     <div id="cursor"></div>
-    <div id="header"><strong>ANIMA ENGINE</strong></div>
+    <div id="header"><strong>ANIMA</strong></div>
 
     <div id="workspace">
         <div id="toolbar">
-            <button class="tool-btn active" id="brushTool">🖌️</button>
-            <button class="tool-btn" id="rectTool">🟦</button>
-            <button class="tool-btn" id="eraseTool">🧽</button>
-            <div style="width: 30px; height: 1px; background: var(--border);"></div>
+            <button class="tool-btn active" id="brushTool" title="Brush (B)">🖌️</button>
+            <button class="tool-btn" id="rectTool" title="Rectangle (R)">🟦</button>
+            <button class="tool-btn" id="eraseTool" title="Eraser (E)">🧽</button>
+            <button class="tool-btn" id="bucketTool" title="Paint Bucket (G)">🪣</button>
+            <div style="width: 30px; height: 1px; background: var(--border); margin: 5px 0;"></div>
             <input type="color" id="colorPicker" value="#000000"
-                style="width:30px; height:30px; border:none; padding:0; background:none;">
-            <input type="range" id="brushSize" min="1" max="100" value="5" vertical style="width: 40px;">
+                style="width:30px; height:30px; border:none; padding:0; background:none; cursor:pointer;">
+            <input type="range" id="brushSize" min="1" max="100" value="5" style="width: 40px;">
         </div>
 
         <div id="stage-container">

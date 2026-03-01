@@ -2,12 +2,12 @@ import { Timeline } from "./timeline.js";
 const { ipcRenderer } = require('electron');
 
 const canvas = document.getElementById('mainCanvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
 const wrapper = document.getElementById('canvas-wrapper');
 const stage = document.getElementById('stage-container');
 const timeline = new Timeline(60);
 
-// UI Refs
+const bucketBtn = document.getElementById('bucketTool');
 const colorPicker = document.getElementById('colorPicker');
 const brushSize = document.getElementById('brushSize');
 const frameSlider = document.getElementById('frameSlider');
@@ -17,7 +17,6 @@ const fpsInput = document.getElementById('fpsInput');
 const frameCounter = document.getElementById('frameCounter');
 
 
-// State
 let scale = 0.5;
 let offsetX = 100, offsetY = 100;
 let isPanning = false;
@@ -26,7 +25,6 @@ let currentTool = 'brush';
 let startX, startY;
 let animationId = null;
 
-// --- Initialization ---
 function init() {
     // Set initial position
     offsetX = (stage.clientWidth - (canvas.width * scale)) / 2;
@@ -36,8 +34,13 @@ function init() {
     syncUI();
 }
 
+function setTool(toolId, toolName) {
+    currentTool = toolName;
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(toolId).classList.add('active');
+}
+
 window.addEventListener('keydown', (e) => {
-    // Prevent triggering shortcuts if the user is typing in a number/text input
     if (e.target.tagName === 'INPUT') return;
 
     if (e.ctrlKey || e.metaKey) {
@@ -63,19 +66,14 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-// 2. Fallback for the Top Application Menu (from main.js)
 ipcRenderer.on('menu-undo', () => { timeline.undo(canvas); syncUI(); });
 ipcRenderer.on('menu-copy', () => timeline.copyFrame());
 ipcRenderer.on('menu-paste', () => { timeline.pasteFrame(canvas); syncUI(); });
 ipcRenderer.on('menu-clear', () => { timeline.clearFrame(canvas); syncUI(); });
 
-// --- Navigation & Sync ---
 function syncUI() {
-    // Update Slider
     frameSlider.value = timeline.currentFrame;
-    // Update Text
     frameCounter.innerText = `Frame: ${timeline.currentFrame}`;
-    // Update Thumbnails
     updateThumbnails();
 }
 
@@ -83,7 +81,6 @@ function updateThumbnails() {
     frameStrip.innerHTML = '';
     timeline.frames.forEach((frame, i) => {
         const t = document.createElement('div');
-        // Add "active" class if it's the current frame
         t.className = `thumb ${i === timeline.currentFrame ? 'active' : ''} ${frame ? 'has-data' : ''}`;
         t.innerText = i;
         t.onclick = () => {
@@ -95,7 +92,6 @@ function updateThumbnails() {
     });
 }
 
-// --- Frame Switching Logic ---
 frameSlider.oninput = (e) => {
     stopPlayback();
     const frameIndex = parseInt(e.target.value);
@@ -103,10 +99,9 @@ frameSlider.oninput = (e) => {
     syncUI();
 };
 
-// --- Playback Engine ---
 function play() {
     const fps = parseInt(fpsInput.value) || 12;
-    timeline.nextFrame(canvas); // We'll add this to timeline.js
+    timeline.nextFrame(canvas);
     syncUI();
 
     animationId = setTimeout(() => {
@@ -132,7 +127,6 @@ playBtn.onclick = () => {
     }
 };
 
-// --- View Controls (Zoom/Pan) ---
 stage.addEventListener('wheel', (e) => {
     if (e.ctrlKey) {
         e.preventDefault();
@@ -156,15 +150,21 @@ stage.addEventListener('mousedown', (e) => {
     }
 });
 
-// --- Drawing Logic ---
 canvas.addEventListener('mousedown', (e) => {
     if (e.button !== 0 || timeline.isPlaying) return;
     isDrawing = true;
     timeline.recordState();
+
     const pos = getCanvasCoords(e);
     startX = pos.x;
     startY = pos.y;
-    if (currentTool !== 'rect') {
+
+    if (currentTool === 'bucket') {
+        const fillColor = colorPicker.value;
+        // We use Math.floor because pixels must be whole numbers
+        floodFill(ctx, Math.floor(pos.x), Math.floor(pos.y), fillColor);
+        isDrawing = false; // Don't "drag" the bucket
+    } else if (currentTool === 'brush' || currentTool === 'erase') {
         setupContext();
         ctx.beginPath();
         ctx.moveTo(startX, startY);
@@ -200,10 +200,110 @@ window.addEventListener('mouseup', () => {
     isPanning = false;
 });
 
-// --- Helpers ---
+
+function floodFill(ctx, x, y, fillColor) {
+    const width = canvas.width;
+    const height = canvas.height;
+    if (x < 0 || x >= width || y < 0 || y >= height) return;
+
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+
+    const startPixelTarget = getPixelColor(data, x, y, width);
+    const fillRGB = hexToRgb(fillColor);
+
+    // Stop if clicking same color
+    if (startPixelTarget[0] === fillRGB.r &&
+        startPixelTarget[1] === fillRGB.g &&
+        startPixelTarget[2] === fillRGB.b &&
+        startPixelTarget[3] === 255) return;
+
+    const stack = [[x, y]];
+    const visited = new Uint8Array(width * height);
+
+    while (stack.length > 0) {
+        const [curX, curY] = stack.pop();
+        const idx = curY * width + curX;
+
+        if (curX < 0 || curX >= width || curY < 0 || curY >= height || visited[idx]) continue;
+
+        const currentColor = getPixelColor(data, curX, curY, width);
+
+        // Lowered tolerance to 40 - it's the "Safe Zone"
+        if (isSameColor(currentColor, startPixelTarget, 40)) {
+            setPixelColor(data, curX, curY, width, fillRGB);
+            visited[idx] = 1;
+
+            stack.push([curX + 1, curY]);
+            stack.push([curX - 1, curY]);
+            stack.push([curX, curY + 1]);
+            stack.push([curX, curY - 1]);
+        }
+    }
+    ctx.putImageData(imageData, 0, 0);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over'; // Draws BEHIND your lines
+    ctx.strokeStyle = fillColor;
+    ctx.lineWidth = 2; // This is your "Expansion" amount
+    ctx.lineJoin = 'round';
+
+    ctx.restore();
+
+    timeline.saveFrame(canvas);
+}
+
+// Helper 1: Compares canvas pixel vs Color Picker (Tolerance)
+function colorsMatch(c1, rgb, tolerance = 30) {
+    return Math.abs(c1[0] - rgb.r) <= tolerance &&
+        Math.abs(c1[1] - rgb.g) <= tolerance &&
+        Math.abs(c1[2] - rgb.b) <= tolerance;
+}
+
+// Helper 2: Compares two canvas pixels [r,g,b,a] to see if they are basically the same
+function isSameColor(c1, c2, tolerance = 30) {
+    // Match transparency
+    if (c2[3] < 10) {
+        return c1[3] < 50; // Only match if the current pixel is also very transparent
+    }
+
+    // If we're looking at a solid color
+    const rDiff = Math.abs(c1[0] - c2[0]);
+    const gDiff = Math.abs(c1[1] - c2[1]);
+    const bDiff = Math.abs(c1[2] - c2[2]);
+    const aDiff = Math.abs(c1[3] - c2[3]);
+
+    return (rDiff + gDiff + bDiff + aDiff) < tolerance;
+}
+
+function getPixelColor(data, x, y, width) {
+    const i = (y * width + x) * 4;
+    return [data[i], data[i + 1], data[i + 2], data[i + 3]];
+}
+
+function setPixelColor(data, x, y, width, rgb) {
+    const i = (y * width + x) * 4;
+    data[i] = rgb.r;
+    data[i + 1] = rgb.g;
+    data[i + 2] = rgb.b;
+    data[i + 3] = 255;
+}
+
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+}
+
 function getCanvasCoords(e) {
     const rect = canvas.getBoundingClientRect();
-    return { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
+    return {
+        x: (e.clientX - rect.left) / scale,
+        y: (e.clientY - rect.top) / scale
+    };
 }
 
 function setupContext() {
@@ -218,10 +318,10 @@ function updateView() {
     wrapper.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
 }
 
-// Tool Switching
-document.getElementById('brushTool').onclick = () => { currentTool = 'brush'; updateToolUI('brushTool'); };
-document.getElementById('eraseTool').onclick = () => { currentTool = 'erase'; updateToolUI('eraseTool'); };
-document.getElementById('rectTool').onclick = () => { currentTool = 'rect'; updateToolUI('rectTool'); };
+document.getElementById('brushTool').onclick = () => setTool('brushTool', 'brush');
+document.getElementById('eraseTool').onclick = () => setTool('eraseTool', 'erase');
+document.getElementById('rectTool').onclick = () => setTool('rectTool', 'rect');
+document.getElementById('bucketTool').onclick = () => setTool('bucketTool', 'bucket');
 
 function updateToolUI(id) {
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
