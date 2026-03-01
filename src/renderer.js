@@ -16,6 +16,11 @@ const playBtn = document.getElementById('playBtn');
 const fpsInput = document.getElementById('fpsInput');
 const frameCounter = document.getElementById('frameCounter');
 
+const onionCanvas = document.getElementById('onionCanvas');
+const onionCtx = onionCanvas.getContext('2d');
+
+const tempOnionCanvas = document.createElement('canvas');
+const tempOnionCtx = tempOnionCanvas.getContext('2d');
 
 let scale = 0.5;
 let offsetX = 100, offsetY = 100;
@@ -74,6 +79,7 @@ ipcRenderer.on('menu-clear', () => { timeline.clearFrame(canvas); syncUI(); });
 function syncUI() {
     frameSlider.value = timeline.currentFrame;
     frameCounter.innerText = `Frame: ${timeline.currentFrame}`;
+    updateOnionSkin();
     updateThumbnails();
 }
 
@@ -296,6 +302,27 @@ function hexToRgb(hex) {
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16)
     } : null;
+}
+
+function updateOnionSkin() {
+    // Clear the ghost layer completely
+    onionCtx.clearRect(0, 0, onionCanvas.width, onionCanvas.height);
+
+    if (timeline.currentFrame > 0 && !timeline.isPlaying) {
+        const prevFrame = timeline.frames[timeline.currentFrame - 1];
+        if (prevFrame) {
+            tempOnionCanvas.width = onionCanvas.width;
+            tempOnionCanvas.height = onionCanvas.height;
+
+            // Use the temp canvas to handle the ghost transparency
+            tempOnionCtx.putImageData(prevFrame, 0, 0);
+
+            onionCtx.save();
+            onionCtx.globalAlpha = 0.2; // This makes it a "ghost"
+            onionCtx.drawImage(tempOnionCanvas, 0, 0);
+            onionCtx.restore();
+        }
+    }
 }
 
 function getCanvasCoords(e) {

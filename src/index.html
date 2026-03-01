@@ -180,8 +180,12 @@
         </div>
 
         <div id="stage-container">
-            <div id="canvas-wrapper">
-                <canvas id="mainCanvas" width="1920" height="1080"></canvas>
+            <div id="canvas-wrapper" style="background: white; box-shadow: 0 0 40px rgba(0,0,0,0.5);">
+                <canvas id="onionCanvas" width="1920" height="1080"
+                    style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1;"></canvas>
+
+                <canvas id="mainCanvas" width="1920" height="1080"
+                    style="position: relative; z-index: 2; background: transparent;"></canvas>
             </div>
         </div>
     </div>

@@ -35,8 +35,6 @@ export class Timeline {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        this.renderOnionSkin(ctx, canvas);
-
         if (this.frames[this.currentFrame]) {
             ctx.putImageData(this.frames[this.currentFrame], 0, 0);
         }
