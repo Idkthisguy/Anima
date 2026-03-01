@@ -1,4 +1,4 @@
-# 🎨 anima
+# 🎨 Anima
 **A lightweight 2D animation engine.**
 
 Anima is an open-source tool built for creators and animators. It’s designed to be fast, portable, and familiar to anyone who grew up using Adobe Animate. No bloat, no heavy startup times—just you and the canvas.
