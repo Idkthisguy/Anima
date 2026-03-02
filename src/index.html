@@ -258,12 +258,42 @@
             transform: translate(-50%, -50%);
             display: none;
         }
+
+        #settings-menu {
+            display: none;
+            position: absolute;
+            top: 40px;
+            right: 0;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 0 0 0 var(--radius);
+            z-index: 1000;
+            box-shadow: -10px 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            transition: opacity 0.2s;
+        }
     </style>
 </head>
 
 <body>
     <div id="cursor"></div>
-    <div id="header">ANIMA // 2D ENGINE</div>
+    <div id="header">
+        <div style="flex: 1;">ANIMA // 2D ENGINE</div>
+        <div id="settings-trigger" style="cursor: pointer; padding: 0 15px; border-left: 1px solid var(--border);">⚙️
+            SETTINGS</div>
+
+        <div id="settings-menu">
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="font-size: 11px; color: var(--accent); font-weight: bold;">SMOOTHING (LAZY MOUSE)</div>
+                <input type="range" id="smoothingSlider" min="0" max="0.9" step="0.05" value="0.5"
+                    style="width: 150px;">
+                <div style="width: 100%; height: 1px; background: var(--border);"></div>
+                <div style="font-size: 10px; color: var(--text-dim);">Shortcuts: [B] Brush, [E] Eraser, [G] Bucket,
+                    [Space] Play, [Cmd+Z] Undo</div>
+            </div>
+        </div>
+    </div>
 
     <div id="workspace">
         <div id="toolbar">

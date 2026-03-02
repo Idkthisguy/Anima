@@ -32,6 +32,10 @@ const drawingCtx = drawingCanvas.getContext('2d');
 
 let currentPath = [];
 
+let smoothing = 0.5;
+let smoothedX = 0;
+let smoothedY = 0;
+
 let scale = 0.5;
 let offsetX = 100, offsetY = 100;
 let isPanning = false;
@@ -263,11 +267,11 @@ canvas.addEventListener('mousedown', (e) => {
     timeline.recordState();
 
     const pos = getCanvasCoords(e);
-    startX = pos.x;
-    startY = pos.y;
+    smoothedX = pos.x; // Initialize smoothing at click point
+    smoothedY = pos.y;
 
     // Start a new path history
-    currentPath = [{ x: startX, y: startY }];
+    currentPath = [{ x: smoothedX, y: smoothedY }];
 
     if (currentTool === 'bucket') {
         floodFill(ctx, Math.floor(pos.x), Math.floor(pos.y), colorPicker.value);
@@ -286,28 +290,28 @@ window.addEventListener('mousemove', (e) => {
         return;
     }
 
-    // Standard Cursor Logic
+    // 1. Get current mouse position FIRST
+    const pos = getCanvasCoords(e);
+
+    // 2. Standard Cursor Logic (Visual only)
     const cursor = document.getElementById('cursor');
     cursor.style.display = 'block';
     cursor.style.left = e.clientX + 'px';
     cursor.style.top = e.clientY + 'px';
-    const displaySize = toolSettings[currentTool].size * scale;
-    cursor.style.width = displaySize + 'px';
-    cursor.style.height = displaySize + 'px';
 
     updateCursor(e);
 
+    // 3. Apply Smoothing Math
+    // This "pulls" the smoothed point toward the actual mouse position
+    smoothedX += (pos.x - smoothedX) * (1 - smoothing);
+    smoothedY += (pos.y - smoothedY) * (1 - smoothing);
+
     if (!isDrawing) return;
-    const pos = getCanvasCoords(e);
 
-    if (currentTool === 'brush' || currentTool === 'erase') {
-        // 1. Add new point to history
-        currentPath.push({ x: pos.x, y: pos.y });
-
-        // 2. CLEAR the temp canvas entirely
+    if (currentTool === 'brush') {
+        // BRUSH MODE: Use temp canvas for smooth performance
+        currentPath.push({ x: smoothedX, y: smoothedY });
         drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-
-        // 3. Redraw the ENTIRE stroke from the beginning of the click
         drawingCtx.beginPath();
         drawingCtx.moveTo(currentPath[0].x, currentPath[0].y);
         for (let i = 1; i < currentPath.length; i++) {
@@ -315,14 +319,28 @@ window.addEventListener('mousemove', (e) => {
         }
         drawingCtx.stroke();
 
-        // 4. Update the main view
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (timeline.frames[timeline.currentFrame]) {
             ctx.putImageData(timeline.frames[timeline.currentFrame], 0, 0);
         }
-
-        ctx.globalAlpha = 1.0;
         ctx.drawImage(drawingCanvas, 0, 0);
+    }
+    else if (currentTool === 'erase') {
+        // ERASER MODE: Direct to main canvas
+        // We use smoothed coords for a nice clean wipe
+        ctx.beginPath();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = toolSettings.erase.size;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Connect from last point to current smoothed point
+        const lastPoint = currentPath[currentPath.length - 1];
+        ctx.moveTo(lastPoint.x, lastPoint.y);
+        ctx.lineTo(smoothedX, smoothedY);
+        ctx.stroke();
+
+        currentPath.push({ x: smoothedX, y: smoothedY });
     }
 });
 
@@ -485,6 +503,16 @@ function getCanvasCoords(e) {
         y: (e.clientY - rect.top) / scale
     };
 }
+
+const settingsTrigger = document.getElementById('settings-trigger');
+const settingsMenu = document.getElementById('settings-menu');
+settingsTrigger.onclick = () => {
+    settingsMenu.style.display = settingsMenu.style.display === 'none' ? 'block' : 'none';
+};
+
+document.getElementById('smoothingSlider').oninput = (e) => {
+    smoothing = parseFloat(e.target.value);
+};
 
 function setupContext(targetCtx = ctx) { // Default to main ctx
     const settings = toolSettings[currentTool];
