@@ -1,6 +1,8 @@
 import { Timeline } from "./timeline.js";
 const { ipcRenderer } = require('electron');
 
+window.focus();
+
 const canvas = document.getElementById('mainCanvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 const wrapper = document.getElementById('canvas-wrapper');
@@ -15,12 +17,20 @@ const frameStrip = document.getElementById('frame-strip');
 const playBtn = document.getElementById('playBtn');
 const fpsInput = document.getElementById('fpsInput');
 const frameCounter = document.getElementById('frameCounter');
+const loopToggle = document.getElementById('loopToggle');
 
 const onionCanvas = document.getElementById('onionCanvas');
 const onionCtx = onionCanvas.getContext('2d');
 
 const tempOnionCanvas = document.createElement('canvas');
 const tempOnionCtx = tempOnionCanvas.getContext('2d');
+
+const drawingCanvas = document.createElement('canvas');
+drawingCanvas.width = canvas.width;
+drawingCanvas.height = canvas.height;
+const drawingCtx = drawingCanvas.getContext('2d');
+
+let currentPath = [];
 
 let scale = 0.5;
 let offsetX = 100, offsetY = 100;
@@ -29,6 +39,14 @@ let isDrawing = false;
 let currentTool = 'brush';
 let startX, startY;
 let animationId = null;
+
+const toolSettings = {
+    brush: { size: 5, opacity: 1, color: '#000000' },
+    erase: { size: 20, opacity: 1 },
+    bucket: { tolerance: 40 }
+};
+
+const opacitySlider = document.getElementById('brushOpacity');
 
 function init() {
     // Set initial position
@@ -41,35 +59,109 @@ function init() {
 
 function setTool(toolId, toolName) {
     currentTool = toolName;
+
+    // UI Update
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(toolId).classList.add('active');
+
+    // SYNC SLIDERS TO THE TOOL'S MEMORY
+    if (toolSettings[currentTool]) {
+        brushSize.value = toolSettings[currentTool].size;
+        opacitySlider.value = toolSettings[currentTool].opacity * 100;
+
+        if (currentTool === 'brush') {
+            colorPicker.value = toolSettings[currentTool].color;
+        }
+    }
 }
 
-window.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
+brushSize.oninput = () => {
+    if (toolSettings[currentTool]) toolSettings[currentTool].size = brushSize.value;
+};
 
-    if (e.ctrlKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
-            case 'z':
-                e.preventDefault();
-                timeline.undo(canvas);
-                syncUI();
-                break;
-            case 'c':
-                e.preventDefault();
-                timeline.copyFrame();
-                break;
-            case 'v':
-                e.preventDefault();
-                timeline.pasteFrame(canvas);
-                syncUI();
-                break;
+opacitySlider.oninput = () => {
+    if (toolSettings[currentTool]) toolSettings[currentTool].opacity = opacitySlider.value / 100;
+};
+
+colorPicker.oninput = () => {
+    if (currentTool === 'brush') toolSettings.brush.color = colorPicker.value;
+};
+
+window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    const key = e.key.toLowerCase();
+    const isCmd = e.ctrlKey || e.metaKey;
+
+    console.log(`Key pressed: ${key} | Ctrl: ${isCmd}`); // DEBUG LINE
+
+    // 1. Handle Undo/Copy/Paste first
+    if (isCmd) {
+        if (key === 'z') {
+            e.preventDefault();
+            timeline.undo(canvas);
+            syncUI();
+            return;
         }
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        timeline.clearFrame(canvas);
-        syncUI();
+        if (key === 'c') {
+            e.preventDefault();
+            timeline.copyFrame();
+            return;
+        }
+        if (key === 'v') {
+            e.preventDefault();
+            timeline.pasteFrame(canvas);
+            syncUI();
+            return;
+        }
+        return;
     }
-});
+
+    // 2. Handle Tools and Navigation
+    switch (key) {
+        case 'b':
+            e.preventDefault();
+            setTool('brushTool', 'brush');
+            break;
+        case 'e':
+            e.preventDefault();
+            setTool('eraseTool', 'erase');
+            break;
+        case 'g':
+            e.preventDefault();
+            setTool('bucketTool', 'bucket');
+            break;
+        // Bracket keys for Brush Size
+        case '[':
+            brushSize.value = Math.max(1, parseInt(brushSize.value) - 2);
+            brushSize.dispatchEvent(new Event('input'));
+            updateCursor();
+            break;
+        case ']':
+            brushSize.value = Math.min(100, parseInt(brushSize.value) + 2);
+            brushSize.dispatchEvent(new Event('input'));
+            updateCursor();
+            break;
+        // Space for Play/Pause
+        case ' ':
+            e.preventDefault();
+            playBtn.click();
+            break;
+        // Navigation
+        case 'arrowright':
+            stopPlayback();
+            timeline.nextFrame(canvas, loopToggle.checked);
+            syncUI();
+            break;
+        case 'arrowleft':
+            stopPlayback();
+            let prev = timeline.currentFrame - 1;
+            if (prev < 0) prev = timeline.maxFrames;
+            timeline.gotoFrame(prev, canvas);
+            syncUI();
+            break;
+    }
+}, true);
 
 ipcRenderer.on('menu-undo', () => { timeline.undo(canvas); syncUI(); });
 ipcRenderer.on('menu-copy', () => timeline.copyFrame());
@@ -107,7 +199,16 @@ frameSlider.oninput = (e) => {
 
 function play() {
     const fps = parseInt(fpsInput.value) || 12;
-    timeline.nextFrame(canvas);
+    const isLooping = loopToggle.checked;
+
+    // Check if we can move to the next frame
+    const moved = timeline.nextFrame(canvas, isLooping);
+
+    if (!moved) {
+        stopPlayback();
+        return;
+    }
+
     syncUI();
 
     animationId = setTimeout(() => {
@@ -165,15 +266,15 @@ canvas.addEventListener('mousedown', (e) => {
     startX = pos.x;
     startY = pos.y;
 
+    // Start a new path history
+    currentPath = [{ x: startX, y: startY }];
+
     if (currentTool === 'bucket') {
-        const fillColor = colorPicker.value;
-        // We use Math.floor because pixels must be whole numbers
-        floodFill(ctx, Math.floor(pos.x), Math.floor(pos.y), fillColor);
-        isDrawing = false; // Don't "drag" the bucket
-    } else if (currentTool === 'brush' || currentTool === 'erase') {
-        setupContext();
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
+        floodFill(ctx, Math.floor(pos.x), Math.floor(pos.y), colorPicker.value);
+        isDrawing = false;
+    } else {
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        setupContext(drawingCtx);
     }
 });
 
@@ -184,16 +285,44 @@ window.addEventListener('mousemove', (e) => {
         updateView();
         return;
     }
+
+    // Standard Cursor Logic
     const cursor = document.getElementById('cursor');
     cursor.style.display = 'block';
     cursor.style.left = e.clientX + 'px';
     cursor.style.top = e.clientY + 'px';
+    const displaySize = toolSettings[currentTool].size * scale;
+    cursor.style.width = displaySize + 'px';
+    cursor.style.height = displaySize + 'px';
+
+    updateCursor(e);
 
     if (!isDrawing) return;
     const pos = getCanvasCoords(e);
+
     if (currentTool === 'brush' || currentTool === 'erase') {
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
+        // 1. Add new point to history
+        currentPath.push({ x: pos.x, y: pos.y });
+
+        // 2. CLEAR the temp canvas entirely
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+        // 3. Redraw the ENTIRE stroke from the beginning of the click
+        drawingCtx.beginPath();
+        drawingCtx.moveTo(currentPath[0].x, currentPath[0].y);
+        for (let i = 1; i < currentPath.length; i++) {
+            drawingCtx.lineTo(currentPath[i].x, currentPath[i].y);
+        }
+        drawingCtx.stroke();
+
+        // 4. Update the main view
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (timeline.frames[timeline.currentFrame]) {
+            ctx.putImageData(timeline.frames[timeline.currentFrame], 0, 0);
+        }
+
+        ctx.globalAlpha = 1.0;
+        ctx.drawImage(drawingCanvas, 0, 0);
     }
 });
 
@@ -295,6 +424,24 @@ function setPixelColor(data, x, y, width, rgb) {
     data[i + 3] = 255;
 }
 
+function updateCursor(e) {
+    const cursor = document.getElementById('cursor');
+    if (!cursor) return;
+
+    // 1. Position it (if we have mouse coordinates)
+    if (e) {
+        cursor.style.display = 'block';
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+    }
+
+    // 2. Resize it based on current tool and scale
+    const size = toolSettings[currentTool]?.size || 5;
+    const displaySize = size * scale;
+    cursor.style.width = displaySize + 'px';
+    cursor.style.height = displaySize + 'px';
+}
+
 function hexToRgb(hex) {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return result ? {
@@ -305,20 +452,26 @@ function hexToRgb(hex) {
 }
 
 function updateOnionSkin() {
-    // Clear the ghost layer completely
     onionCtx.clearRect(0, 0, onionCanvas.width, onionCanvas.height);
+    if (timeline.isPlaying) return;
 
-    if (timeline.currentFrame > 0 && !timeline.isPlaying) {
-        const prevFrame = timeline.frames[timeline.currentFrame - 1];
-        if (prevFrame) {
+    const framesToSee = 2; // Look 2 frames back
+
+    for (let i = 1; i <= framesToSee; i++) {
+        const targetIdx = timeline.currentFrame - i;
+        if (targetIdx >= 0 && timeline.frames[targetIdx]) {
             tempOnionCanvas.width = onionCanvas.width;
             tempOnionCanvas.height = onionCanvas.height;
-
-            // Use the temp canvas to handle the ghost transparency
-            tempOnionCtx.putImageData(prevFrame, 0, 0);
+            tempOnionCtx.putImageData(timeline.frames[targetIdx], 0, 0);
 
             onionCtx.save();
-            onionCtx.globalAlpha = 0.2; // This makes it a "ghost"
+            onionCtx.globalAlpha = 0.3 / i;
+
+            onionCtx.globalCompositeOperation = 'source-atop';
+            onionCtx.fillStyle = 'rgba(0, 122, 204, 0.5)';
+            onionCtx.drawImage(tempOnionCanvas, 0, 0);
+
+            onionCtx.globalCompositeOperation = 'destination-over';
             onionCtx.drawImage(tempOnionCanvas, 0, 0);
             onionCtx.restore();
         }
@@ -333,14 +486,15 @@ function getCanvasCoords(e) {
     };
 }
 
-function setupContext() {
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = brushSize.value;
-    ctx.globalCompositeOperation = currentTool === 'erase' ? 'destination-out' : 'source-over';
-    ctx.strokeStyle = colorPicker.value;
+function setupContext(targetCtx = ctx) { // Default to main ctx
+    const settings = toolSettings[currentTool];
+    targetCtx.lineCap = 'round';
+    targetCtx.lineJoin = 'round';
+    targetCtx.lineWidth = settings.size;
+    targetCtx.globalCompositeOperation = currentTool === 'erase' ? 'destination-out' : 'source-over';
+    targetCtx.globalAlpha = settings.opacity;
+    targetCtx.strokeStyle = currentTool === 'erase' ? 'rgba(0,0,0,1)' : colorPicker.value;
 }
-
 function updateView() {
     wrapper.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
 }
