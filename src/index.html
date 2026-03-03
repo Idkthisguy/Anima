@@ -27,7 +27,6 @@
             overflow: hidden;
         }
 
-        /* Modern Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -46,7 +45,6 @@
             background: #444;
         }
 
-        /* Header */
         #header {
             height: 40px;
             background: var(--panel);
@@ -68,7 +66,6 @@
             position: relative;
         }
 
-        /* Professional Toolbar */
         #toolbar {
             width: 70px;
             background: var(--panel);
@@ -107,7 +104,6 @@
             box-shadow: 0 4px 12px rgba(61, 90, 254, 0.3);
         }
 
-        /* Tool Settings (Vertical sliders look cleaner) */
         .tool-settings {
             margin-top: auto;
             display: flex;
@@ -144,7 +140,6 @@
             cursor: pointer;
         }
 
-        /* Stage */
         #stage-container {
             flex: 1;
             background: #0a0a0a;
@@ -162,15 +157,15 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
         }
 
-        /* Modern Timeline */
         #timeline-panel {
-            height: 160px;
+            height: 180px;
             background: var(--panel);
             border-top: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 15px;
+            padding: 10px 20px;
             z-index: 100;
+            gap: 10px;
         }
 
         .controls {
@@ -214,6 +209,7 @@
             flex: 1;
             border-radius: var(--radius);
             border: 1px solid #222;
+            height: 90px;
         }
 
         .thumb {
@@ -272,6 +268,32 @@
             box-shadow: -10px 10px 30px rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(10px);
             transition: opacity 0.2s;
+        }
+
+        .thumb {
+            min-width: 60px;
+            height: 70px;
+            background: #202020;
+            border-radius: 4px;
+            border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            font-size: 10px;
+            color: #555;
+            flex-shrink: 0;
+        }
+
+        .thumb.has-data {
+            background: #2a2a2a;
+            border-top: 3px solid var(--accent);
+            color: #eee;
+        }
+
+        .thumb.active {
+            border: 2px solid var(--accent);
+            background: #333;
         }
     </style>
 </head>
@@ -337,16 +359,23 @@
                         style="width:35px; background:#000; color:var(--accent); border:none; padding:3px; border-radius:4px; font-weight:bold;">
                 </label>
 
-                <span id="frameCounter" style="font-size: 11px; font-family: monospace; min-width: 80px;">FRAME:
-                    00</span>
+                <label style="font-size: 11px; color: var(--text-dim); margin-left: 10px;">LEN
+                    <input type="number" id="durationInput" value="60" min="1" max="999"
+                        style="width:40px; background:#000; color:var(--accent); border:none; padding:3px; border-radius:4px; font-weight:bold;">
+                </label>
 
-                <input type="range" id="frameSlider" min="0" max="60" value="0" style="flex: 1; height: 2px;">
+                <span id="frameCounter"
+                    style="font-size: 11px; font-family: monospace; min-width: 80px; margin-left:10px;">FRAME: 00</span>
 
-                <label style="font-size: 11px; color: var(--text-dim); cursor: pointer;">
+                <input type="range" id="frameSlider" min="0" max="60" value="0"
+                    style="flex: 1; height: 4px; cursor: pointer;">
+
+                <label style="font-size: 11px; color: var(--text-dim); cursor: pointer; margin-left: 10px;">
                     <input type="checkbox" id="loopToggle" checked> LOOP
                 </label>
             </div>
         </div>
+
         <div id="frame-strip"></div>
     </div>
 

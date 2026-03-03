@@ -1,6 +1,11 @@
 import { Timeline } from "./timeline.js";
 const { ipcRenderer } = require('electron');
 
+const { remote } = require('electron');
+const dialog = require('electron').remote ? require('electron').remote.dialog : null;
+
+const fs = require('fs');
+
 window.focus();
 
 const canvas = document.getElementById('mainCanvas');
@@ -30,6 +35,20 @@ drawingCanvas.width = canvas.width;
 drawingCanvas.height = canvas.height;
 const drawingCtx = drawingCanvas.getContext('2d');
 
+const durationInput = document.getElementById('durationInput');
+durationInput.onchange = () => {
+    let newMax = parseInt(durationInput.value);
+
+    if (isNaN(newMax) || newMax < 0) newMax = 1;
+    if (newMax > 999) newMax = 999;
+
+    timeline.setDuration(newMax);
+
+    frameSlider.max = newMax;
+
+    syncUI();
+};
+
 let currentPath = [];
 
 let smoothing = 0.5;
@@ -44,6 +63,8 @@ let currentTool = 'brush';
 let startX, startY;
 let animationId = null;
 
+let currentFilePath = null;
+
 const toolSettings = {
     brush: { size: 5, opacity: 1, color: '#000000' },
     erase: { size: 20, opacity: 1 },
@@ -53,7 +74,6 @@ const toolSettings = {
 const opacitySlider = document.getElementById('brushOpacity');
 
 function init() {
-    // Set initial position
     offsetX = (stage.clientWidth - (canvas.width * scale)) / 2;
     offsetY = (stage.clientHeight - (canvas.height * scale)) / 2;
 
@@ -64,11 +84,9 @@ function init() {
 function setTool(toolId, toolName) {
     currentTool = toolName;
 
-    // UI Update
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(toolId).classList.add('active');
 
-    // SYNC SLIDERS TO THE TOOL'S MEMORY
     if (toolSettings[currentTool]) {
         brushSize.value = toolSettings[currentTool].size;
         opacitySlider.value = toolSettings[currentTool].opacity * 100;
@@ -97,9 +115,8 @@ window.addEventListener('keydown', (e) => {
     const key = e.key.toLowerCase();
     const isCmd = e.ctrlKey || e.metaKey;
 
-    console.log(`Key pressed: ${key} | Ctrl: ${isCmd}`); // DEBUG LINE
+    console.log(`Key pressed: ${key} | Ctrl: ${isCmd}`);
 
-    // 1. Handle Undo/Copy/Paste first
     if (isCmd) {
         if (key === 'z') {
             e.preventDefault();
@@ -120,8 +137,6 @@ window.addEventListener('keydown', (e) => {
         }
         return;
     }
-
-    // 2. Handle Tools and Navigation
     switch (key) {
         case 'b':
             e.preventDefault();
@@ -135,7 +150,6 @@ window.addEventListener('keydown', (e) => {
             e.preventDefault();
             setTool('bucketTool', 'bucket');
             break;
-        // Bracket keys for Brush Size
         case '[':
             brushSize.value = Math.max(1, parseInt(brushSize.value) - 2);
             brushSize.dispatchEvent(new Event('input'));
@@ -146,23 +160,43 @@ window.addEventListener('keydown', (e) => {
             brushSize.dispatchEvent(new Event('input'));
             updateCursor();
             break;
-        // Space for Play/Pause
         case ' ':
             e.preventDefault();
             playBtn.click();
             break;
-        // Navigation
-        case 'arrowright':
+        case 'f':
+            e.preventDefault();
             stopPlayback();
             timeline.nextFrame(canvas, loopToggle.checked);
             syncUI();
             break;
-        case 'arrowleft':
+
+        case 'd':
+            e.preventDefault();
             stopPlayback();
             let prev = timeline.currentFrame - 1;
             if (prev < 0) prev = timeline.maxFrames;
             timeline.gotoFrame(prev, canvas);
             syncUI();
+            break;
+
+        case '=':
+        case '+':
+            scale = Math.min(scale * 1.1, 10);
+            updateView();
+            break;
+        case '-':
+        case '_':
+            scale = Math.max(scale * 0.9, 0.05);
+            updateView();
+            break;
+
+        case 'delete':
+        case 'backspace':
+            if (!isCmd) {
+                timeline.clearFrame(canvas);
+                syncUI();
+            }
             break;
     }
 }, true);
@@ -171,6 +205,84 @@ ipcRenderer.on('menu-undo', () => { timeline.undo(canvas); syncUI(); });
 ipcRenderer.on('menu-copy', () => timeline.copyFrame());
 ipcRenderer.on('menu-paste', () => { timeline.pasteFrame(canvas); syncUI(); });
 ipcRenderer.on('menu-clear', () => { timeline.clearFrame(canvas); syncUI(); });
+ipcRenderer.on('menu-save', () => {
+    if (currentFilePath) {
+        try {
+            fs.writeFileSync(currentFilePath, getProjectData());
+            console.log("Saved to:", currentFilePath);
+            alert("Project Saved!");
+        } catch (err) {
+            alert("Save failed: " + err.message);
+        }
+    } else {
+        ipcRenderer.send('request-save-as-dialog');
+    }
+});
+
+ipcRenderer.on('menu-save-as', (event, filePath) => {
+    if (!filePath) return;
+
+    currentFilePath = filePath;
+    try {
+        fs.writeFileSync(currentFilePath, getProjectData());
+        alert("Project Saved!");
+    } catch (err) {
+        alert("Save As failed: " + err.message);
+    }
+});
+
+ipcRenderer.on('menu-open', async (event, filePath) => {
+    if (!filePath) return;
+
+    try {
+        const rawData = fs.readFileSync(filePath, 'utf8');
+        const data = JSON.parse(rawData);
+
+        currentFilePath = filePath;
+        fpsInput.value = data.fps;
+
+        for (let i = 0; i < data.frames.length; i++) {
+            if (data.frames[i]) {
+                const img = new Image();
+                img.src = data.frames[i];
+                await img.decode();
+                const tc = document.createElement('canvas');
+                tc.width = canvas.width;
+                tc.height = canvas.height;
+                const tctx = tc.getContext('2d');
+                tctx.drawImage(img, 0, 0);
+                timeline.frames[i] = tctx.getImageData(0, 0, canvas.width, canvas.height);
+            } else {
+                timeline.frames[i] = null;
+            }
+        }
+        durationInput.value = data.maxFrames || 60;
+        frameSlider.max = data.maxFrames || 60;
+        timeline.setDuration(parseInt(durationInput.value));
+        timeline.gotoFrame(0, canvas);
+        syncUI();
+        console.log("Loaded:", currentFilePath);
+    } catch (err) {
+        alert("Failed to open file: " + err.message);
+    }
+});
+function getProjectData() {
+    return JSON.stringify({
+        appName: "Anima",
+        version: "1.0-beta",
+        fps: fpsInput.value,
+        maxFrames: timeline.maxFrames,
+        frames: timeline.frames.map(imgData => {
+            if (!imgData) return null;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
+            return tempCanvas.toDataURL();
+        })
+    });
+}
+
 
 function syncUI() {
     frameSlider.value = timeline.currentFrame;
@@ -194,6 +306,22 @@ function updateThumbnails() {
     });
 }
 
+ipcRenderer.on('menu-new', () => {
+    if (confirm("Create new project? This will wipe your current canvas.")) {
+        timeline.frames = new Array(timeline.maxFrames + 1).fill(null);
+        timeline.undoStack = [];
+        timeline.gotoFrame(0, canvas);
+        syncUI();
+    }
+});
+
+ipcRenderer.on('menu-reset-view', () => {
+    scale = 0.5;
+    offsetX = (stage.clientWidth - (canvas.width * scale)) / 2;
+    offsetY = (stage.clientHeight - (canvas.height * scale)) / 2;
+    updateView();
+});
+
 frameSlider.oninput = (e) => {
     stopPlayback();
     const frameIndex = parseInt(e.target.value);
@@ -205,7 +333,6 @@ function play() {
     const fps = parseInt(fpsInput.value) || 12;
     const isLooping = loopToggle.checked;
 
-    // Check if we can move to the next frame
     const moved = timeline.nextFrame(canvas, isLooping);
 
     if (!moved) {
@@ -231,6 +358,11 @@ playBtn.onclick = () => {
     if (timeline.isPlaying) {
         stopPlayback();
     } else {
+        if (!loopToggle.checked && timeline.currentFrame >= timeline.maxFrames) {
+            timeline.gotoFrame(0, canvas);
+            syncUI();
+        }
+
         timeline.isPlaying = true;
         playBtn.innerText = "⏸ Pause";
         playBtn.style.background = "#cc3333";
@@ -267,10 +399,9 @@ canvas.addEventListener('mousedown', (e) => {
     timeline.recordState();
 
     const pos = getCanvasCoords(e);
-    smoothedX = pos.x; // Initialize smoothing at click point
+    smoothedX = pos.x;
     smoothedY = pos.y;
 
-    // Start a new path history
     currentPath = [{ x: smoothedX, y: smoothedY }];
 
     if (currentTool === 'bucket') {
@@ -290,10 +421,8 @@ window.addEventListener('mousemove', (e) => {
         return;
     }
 
-    // 1. Get current mouse position FIRST
     const pos = getCanvasCoords(e);
 
-    // 2. Standard Cursor Logic (Visual only)
     const cursor = document.getElementById('cursor');
     cursor.style.display = 'block';
     cursor.style.left = e.clientX + 'px';
@@ -301,15 +430,12 @@ window.addEventListener('mousemove', (e) => {
 
     updateCursor(e);
 
-    // 3. Apply Smoothing Math
-    // This "pulls" the smoothed point toward the actual mouse position
     smoothedX += (pos.x - smoothedX) * (1 - smoothing);
     smoothedY += (pos.y - smoothedY) * (1 - smoothing);
 
     if (!isDrawing) return;
 
     if (currentTool === 'brush') {
-        // BRUSH MODE: Use temp canvas for smooth performance
         currentPath.push({ x: smoothedX, y: smoothedY });
         drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
         drawingCtx.beginPath();
@@ -326,15 +452,12 @@ window.addEventListener('mousemove', (e) => {
         ctx.drawImage(drawingCanvas, 0, 0);
     }
     else if (currentTool === 'erase') {
-        // ERASER MODE: Direct to main canvas
-        // We use smoothed coords for a nice clean wipe
         ctx.beginPath();
         ctx.globalCompositeOperation = 'destination-out';
         ctx.lineWidth = toolSettings.erase.size;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
-        // Connect from last point to current smoothed point
         const lastPoint = currentPath[currentPath.length - 1];
         ctx.moveTo(lastPoint.x, lastPoint.y);
         ctx.lineTo(smoothedX, smoothedY);
@@ -365,7 +488,6 @@ function floodFill(ctx, x, y, fillColor) {
     const startPixelTarget = getPixelColor(data, x, y, width);
     const fillRGB = hexToRgb(fillColor);
 
-    // Stop if clicking same color
     if (startPixelTarget[0] === fillRGB.r &&
         startPixelTarget[1] === fillRGB.g &&
         startPixelTarget[2] === fillRGB.b &&
@@ -382,7 +504,6 @@ function floodFill(ctx, x, y, fillColor) {
 
         const currentColor = getPixelColor(data, curX, curY, width);
 
-        // Lowered tolerance to 40 - it's the "Safe Zone"
         if (isSameColor(currentColor, startPixelTarget, 40)) {
             setPixelColor(data, curX, curY, width, fillRGB);
             visited[idx] = 1;
@@ -396,9 +517,9 @@ function floodFill(ctx, x, y, fillColor) {
     ctx.putImageData(imageData, 0, 0);
 
     ctx.save();
-    ctx.globalCompositeOperation = 'destination-over'; // Draws BEHIND your lines
+    ctx.globalCompositeOperation = 'destination-over';
     ctx.strokeStyle = fillColor;
-    ctx.lineWidth = 2; // This is your "Expansion" amount
+    ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
 
     ctx.restore();
@@ -406,21 +527,17 @@ function floodFill(ctx, x, y, fillColor) {
     timeline.saveFrame(canvas);
 }
 
-// Helper 1: Compares canvas pixel vs Color Picker (Tolerance)
 function colorsMatch(c1, rgb, tolerance = 30) {
     return Math.abs(c1[0] - rgb.r) <= tolerance &&
         Math.abs(c1[1] - rgb.g) <= tolerance &&
         Math.abs(c1[2] - rgb.b) <= tolerance;
 }
 
-// Helper 2: Compares two canvas pixels [r,g,b,a] to see if they are basically the same
 function isSameColor(c1, c2, tolerance = 30) {
-    // Match transparency
     if (c2[3] < 10) {
-        return c1[3] < 50; // Only match if the current pixel is also very transparent
+        return c1[3] < 50;
     }
 
-    // If we're looking at a solid color
     const rDiff = Math.abs(c1[0] - c2[0]);
     const gDiff = Math.abs(c1[1] - c2[1]);
     const bDiff = Math.abs(c1[2] - c2[2]);
@@ -446,14 +563,12 @@ function updateCursor(e) {
     const cursor = document.getElementById('cursor');
     if (!cursor) return;
 
-    // 1. Position it (if we have mouse coordinates)
     if (e) {
         cursor.style.display = 'block';
         cursor.style.left = e.clientX + 'px';
         cursor.style.top = e.clientY + 'px';
     }
 
-    // 2. Resize it based on current tool and scale
     const size = toolSettings[currentTool]?.size || 5;
     const displaySize = size * scale;
     cursor.style.width = displaySize + 'px';
@@ -473,7 +588,7 @@ function updateOnionSkin() {
     onionCtx.clearRect(0, 0, onionCanvas.width, onionCanvas.height);
     if (timeline.isPlaying) return;
 
-    const framesToSee = 2; // Look 2 frames back
+    const framesToSee = 2;
 
     for (let i = 1; i <= framesToSee; i++) {
         const targetIdx = timeline.currentFrame - i;
@@ -514,7 +629,7 @@ document.getElementById('smoothingSlider').oninput = (e) => {
     smoothing = parseFloat(e.target.value);
 };
 
-function setupContext(targetCtx = ctx) { // Default to main ctx
+function setupContext(targetCtx = ctx) {
     const settings = toolSettings[currentTool];
     targetCtx.lineCap = 'round';
     targetCtx.lineJoin = 'round';

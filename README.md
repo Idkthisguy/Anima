@@ -1,34 +1,32 @@
-# 🎨 Anima
-**A lightweight 2D animation engine.**
+# 🎨 Anima (v1.0.0-beta)
+**A lightweight, portable 2D animation engine.**
 
-Anima is an open-source tool built for creators and animators. It’s designed to be fast, portable, and familiar to anyone who grew up using Adobe Animate. No bloat, no heavy startup times—just you and the canvas.
+Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
 
-## 🚀 Current features
-- **layer stack:** independent layers for every single frame.
-- **onion skinning:** visual ghosting for better motion tracking.
-- **ffmpeg rendering:** export your work to mp4, webm, or gif.
-- **infinite stage:** smooth middle-mouse panning and ctrl+scroll zoom.
-- **video import:** drop vids directly into the timeline for rotoscoping.
 
-## 🛠️ installation
-1. **clone:** `git clone https://github.com/Idkthisguy/anima.git`
-2. **install:** `npm install`
-3. **launch:** `npm start`
 
-## ⌨️ shortcuts
-| action | key |
+## 🚀 Key Features
+- **Dynamic Timeline:** Frame-by-frame control with a high-performance preview.
+- **Onion Skinning:** Blue-tinted ghosting for precise motion tracking.
+- **Smooth Canvas:** Sub-pixel smoothing with middle-mouse panning and high-speed zoom.
+- **Portable Projects:** Save your entire workflow into a single `.anima` file.
+
+## 🛠️ Getting Started
+1. **Download:** Download `Anima.Editor.exe` from the [Releases](https://github.com/Idkthisguy/anima/releases) section.
+2. **Launch:** Run the executable. No installation required.
+3. **Animate:** Draw, hit `F` for a new frame, and hit `Space` to see it move.
+
+## ⌨️ Pro Shortcuts
+| Action | Key |
 | :--- | :--- |
-| **brush / eraser** | `B / E` |
-| **undo** | `ctrl + Z` |
-| **copy / paste frame** | `ctrl + C / V` |
-| **pan stage** | `middle mouse` |
-| **zoom** | `ctrl + scroll` |
+| **Tools** | `B` (Brush), `E` (Eraser), `G` (Fill) |
+| **Brush Size** | `[` (Decrease), `]` (Increase) |
+| **Navigation** | `F` (Next Frame), `D` (Prev Frame) |
+| **Playback** | `Spacebar` (Play/Pause) |
+| **Canvas** | `Ctrl + Scroll` (Zoom), `Mid-Mouse` (Pan), `Ctrl + 0` (Reset) |
 
-## 🗺️ roadmap
-- [ ] **vector engine:** moving from pixels to paths for clean scaling.
-- [ ] **tweening system:** automated motion between keyframes.
-- [ ] **symbols:** reusable assets to speed up workflow.
-- [ ] **audio scrubbing:** multi-track support for lip-syncing.
-
-## 📜 license
-MIT. Free to use, fork, and improve.
+## 🗺️ Roadmap
+- [ ] **FFMPEG Export:** Export to MP4, WebM, and GIF.
+- [ ] **Vector Engine:** Moving from pixels to paths for infinite scaling.
+- [ ] **Tweening:** Automated motion paths between keyframes.
+- [ ] **Audio Support:** Multi-track scrubbing for lip-syncing.

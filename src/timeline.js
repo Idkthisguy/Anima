@@ -8,6 +8,24 @@ export class Timeline {
         this.isPlaying = false;
     }
 
+    setDuration(newMax) {
+        const oldMax = this.maxFrames;
+        this.maxFrames = newMax;
+
+        if (newMax > oldMax) {
+            // Growing: Add null slots to the end
+            const extra = new Array(newMax - oldMax).fill(null);
+            this.frames = [...this.frames, ...extra];
+        } else {
+            // Shrinking: Slice the array
+            this.frames = this.frames.slice(0, newMax + 1);
+            // If user was on frame 100 and changed total to 60, snap them back to 60
+            if (this.currentFrame > newMax) {
+                this.currentFrame = newMax;
+            }
+        }
+    }
+
     recordState() {
         // Creates a deep copy of the entire timeline for the undo stack
         const state = this.frames.map(f => f ? new ImageData(new Uint8ClampedArray(f.data), f.width, f.height) : null);

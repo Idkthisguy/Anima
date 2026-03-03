@@ -1,12 +1,15 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 
+let win;
+
 function createWindow() {
-    const win = new BrowserWindow({
+    win = new BrowserWindow({
         width: 1300,
         height: 900,
-        title: "Anima - Animation Engine",
+        title: "Anima",
         backgroundColor: '#121212',
+        icon: path.join(__dirname, 'icon.ico'),
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
@@ -20,6 +23,29 @@ function createWindow() {
             label: 'File',
             submenu: [
                 { label: 'New', accelerator: 'CmdOrCtrl+N', click: () => win.webContents.send('menu-new') },
+                { type: 'separator' },
+                {
+                    label: 'Open',
+                    accelerator: 'CmdOrCtrl+O',
+                    click: async () => {
+                        const result = await dialog.showOpenDialog(win, {
+                            properties: ['openFile'],
+                            filters: [{ name: 'Anima Project', extensions: ['anima'] }]
+                        });
+                        if (!result.canceled) win.webContents.send('menu-open', result.filePaths[0]);
+                    }
+                },
+                { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => win.webContents.send('menu-save') },
+                {
+                    label: 'Save As',
+                    accelerator: 'CmdOrCtrl+Alt+S',
+                    click: async () => {
+                        const result = await dialog.showSaveDialog(win, {
+                            filters: [{ name: 'Anima Project', extensions: ['anima'] }]
+                        });
+                        if (!result.canceled) win.webContents.send('menu-save-as', result.filePath);
+                    }
+                },
                 { type: 'separator' },
                 { role: 'quit' }
             ]
@@ -47,6 +73,14 @@ function createWindow() {
 
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
+
+// Communication Bridge: When renderer needs a "Save As" dialog because it has no path
+ipcMain.on('request-save-as-dialog', async () => {
+    const result = await dialog.showSaveDialog(win, {
+        filters: [{ name: 'Anima Project', extensions: ['anima'] }]
+    });
+    if (!result.canceled) win.webContents.send('menu-save-as', result.filePath);
+});
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
