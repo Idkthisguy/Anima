@@ -3,7 +3,6 @@
 
 Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
 
-
 ## Key Features
 - **Dynamic Timeline:** Frame-by-frame control with a high-performance preview.
 - **Onion Skinning:** Blue-tinted ghosting for precise motion tracking.
@@ -25,7 +24,7 @@ Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar
 | **Canvas** | `Ctrl + Scroll` (Zoom), `Mid-Mouse` (Pan), `Ctrl + 0` (Reset) |
 
 ## Roadmap
-- [ ] **FFMPEG Export:** Export to MP4, WebM, and GIF.
+- [x] **FFMPEG Export:** Export to MP4, WebM, and GIF.
 - [ ] **Vector Engine:** Moving from pixels to paths for infinite scaling.
 - [ ] **Tweening:** Automated motion paths between keyframes.
 - [ ] **Audio Support:** Multi-track scrubbing for lip-syncing.
