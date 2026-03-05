@@ -100,6 +100,8 @@ function setTool(toolId, toolName) {
             colorPicker.value = toolSettings[currentTool].color;
         }
     }
+
+    setupContext(drawingCtx);
 }
 
 brushSize.oninput = () => {
@@ -689,10 +691,17 @@ function setupContext(targetCtx = ctx) {
     const settings = toolSettings[currentTool];
     targetCtx.lineCap = 'round';
     targetCtx.lineJoin = 'round';
-    targetCtx.lineWidth = settings.size;
-    targetCtx.globalCompositeOperation = currentTool === 'erase' ? 'destination-out' : 'source-over';
-    targetCtx.globalAlpha = settings.opacity;
-    targetCtx.strokeStyle = currentTool === 'erase' ? 'rgba(0,0,0,1)' : colorPicker.value;
+
+    targetCtx.lineWidth = settings.size || brushSize.value || 5;
+    targetCtx.globalAlpha = settings.opacity || (opacitySlider.value / 100) || 1;
+
+    if (currentTool === 'erase') {
+        targetCtx.globalCompositeOperation = 'destination-out';
+        targetCtx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+        targetCtx.globalCompositeOperation = 'source-over';
+        targetCtx.strokeStyle = colorPicker.value || '#000000';
+    }
 }
 function updateView() {
     wrapper.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
@@ -700,7 +709,7 @@ function updateView() {
 
 document.getElementById('brushTool').onclick = () => setTool('brushTool', 'brush');
 document.getElementById('eraseTool').onclick = () => setTool('eraseTool', 'erase');
-document.getElementById('rectTool').onclick = () => setTool('rectTool', 'rect');
+//document.getElementById('rectTool').onclick = () => setTool('rectTool', 'rect');
 document.getElementById('bucketTool').onclick = () => setTool('bucketTool', 'bucket');
 
 function updateToolUI(id) {
@@ -735,7 +744,6 @@ ipcRenderer.on('menu-export', async (event, format) => {
     exportCanvas.height = canvas.height;
     const exportCtx = exportCanvas.getContext('2d');
 
-    // Manual capture stream
     const stream = exportCanvas.captureStream(0);
     const recorder = new MediaRecorder(stream, {
         mimeType: 'video/webm;codecs=vp9',
@@ -760,15 +768,13 @@ ipcRenderer.on('menu-export', async (event, format) => {
                     fps: fps
                 });
             }
-            resolve(); // Tells the promise we are officially done
+            resolve();
         };
     });
 
     recorder.start();
     await new Promise(r => setTimeout(r, 100));
 
-    // The Secret Sauce: We must wait for the recorder to "Warm up" 
-    // before the first requestFrame() or it might return an empty file.
     await new Promise(r => setTimeout(r, 100));
 
     for (let i = 0; i <= timeline.maxFrames; i++) {
@@ -784,14 +790,11 @@ ipcRenderer.on('menu-export', async (event, format) => {
             exportCtx.drawImage(tempCanvas, 0, 0);
         }
 
-        // Snap the frame ONCE
         stream.getVideoTracks()[0].requestFrame();
 
-        // Wait for the duration of exactly one frame
         await new Promise(r => setTimeout(r, 1000 / fps));
     }
 
-    // Give the recorder a moment to finalize the last chunk
     recorder.stop();
     await exportFinished;
 

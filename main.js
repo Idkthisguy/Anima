@@ -123,10 +123,8 @@ ipcMain.on('save-exported-file', async (event, { BufferData, extension, requeste
         const currentFPS = fps || 12;
 
         try {
-            // 1. Write the file
             fs.writeFileSync(tempWebmPath, buffer);
 
-            // 2. Small delay to ensure the OS has released the file lock
             setTimeout(() => {
                 if (!fs.existsSync(tempWebmPath) || fs.statSync(tempWebmPath).size === 0) {
                     dialog.showErrorBox('Export Error', 'Temp file was not created correctly.');
@@ -141,7 +139,7 @@ ipcMain.on('save-exported-file', async (event, { BufferData, extension, requeste
                         '-pix_fmt yuv420p',
                         '-crf 17',
                         '-movflags +faststart',
-                        '-vf', `fps=${currentFPS}` // Force the output stream to keep the rhythm
+                        '-vf', `fps=${currentFPS}`
                     ])
                     .on('start', (commandLine) => {
                         console.log('Spawned FFmpeg with command: ' + commandLine);
@@ -156,7 +154,7 @@ ipcMain.on('save-exported-file', async (event, { BufferData, extension, requeste
                         dialog.showErrorBox('Export Failed', `FFmpeg Error: ${err.message}`);
                     })
                     .save(result.filePath);
-            }, 200); // 200ms is usually enough to clear the "End of File" race condition
+            }, 200);
 
         } catch (e) {
             dialog.showErrorBox('Write Error', `Failed to write temp file: ${e.message}`);
