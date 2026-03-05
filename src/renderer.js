@@ -35,15 +35,16 @@ drawingCanvas.width = canvas.width;
 drawingCanvas.height = canvas.height;
 const drawingCtx = drawingCanvas.getContext('2d');
 
+const frameCtxMenu = document.getElementById('frame-context-menu');
+let menuTargetFrame = null;
+
 const durationInput = document.getElementById('durationInput');
 durationInput.onchange = () => {
     let newMax = parseInt(durationInput.value);
-
     if (isNaN(newMax) || newMax < 0) newMax = 1;
     if (newMax > 999) newMax = 999;
 
     timeline.setDuration(newMax);
-
     frameSlider.max = newMax;
 
     syncUI();
@@ -80,6 +81,10 @@ function init() {
     updateView();
     syncUI();
 }
+
+document.getElementById('loopToggle').addEventListener('click', (e) => {
+    e.target.blur();
+});
 
 function setTool(toolId, toolName) {
     currentTool = toolName;
@@ -198,6 +203,10 @@ window.addEventListener('keydown', (e) => {
                 syncUI();
             }
             break;
+        case 'space':
+            e.preventDefault();
+            play();
+            break;
     }
 }, true);
 
@@ -266,6 +275,7 @@ ipcRenderer.on('menu-open', async (event, filePath) => {
         alert("Failed to open file: " + err.message);
     }
 });
+
 function getProjectData() {
     return JSON.stringify({
         appName: "Anima",
@@ -283,7 +293,6 @@ function getProjectData() {
     });
 }
 
-
 function syncUI() {
     frameSlider.value = timeline.currentFrame;
     frameCounter.innerText = `Frame: ${timeline.currentFrame}`;
@@ -296,15 +305,30 @@ function updateThumbnails() {
     timeline.frames.forEach((frame, i) => {
         const t = document.createElement('div');
         t.className = `thumb ${i === timeline.currentFrame ? 'active' : ''} ${frame ? 'has-data' : ''}`;
-        t.innerText = i;
+        t.innerText = i + 1;
+
         t.onclick = () => {
             stopPlayback();
             timeline.gotoFrame(i, canvas);
             syncUI();
         };
+
+        t.oncontextmenu = (e) => {
+            e.preventDefault();
+            menuTargetFrame = i;
+
+            frameCtxMenu.style.display = 'block';
+            frameCtxMenu.style.left = e.clientX + 'px';
+            frameCtxMenu.style.top = e.clientY + 'px';
+        };
+
         frameStrip.appendChild(t);
     });
 }
+
+window.addEventListener('click', () => {
+    frameCtxMenu.style.display = 'none';
+});
 
 ipcRenderer.on('menu-new', () => {
     if (confirm("Create new project? This will wipe your current canvas.")) {
@@ -390,6 +414,7 @@ stage.addEventListener('mousedown', (e) => {
         isPanning = true;
         startX = e.clientX - offsetX;
         startY = e.clientY - offsetY;
+        stage.style.cursor = 'grabbing';
     }
 });
 
@@ -418,11 +443,14 @@ window.addEventListener('mousemove', (e) => {
         offsetX = e.clientX - startX;
         offsetY = e.clientY - startY;
         updateView();
+
+        const cursor = document.getElementById('cursor');
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
         return;
     }
 
     const pos = getCanvasCoords(e);
-
     const cursor = document.getElementById('cursor');
     cursor.style.display = 'block';
     cursor.style.left = e.clientX + 'px';
@@ -470,11 +498,39 @@ window.addEventListener('mousemove', (e) => {
 window.addEventListener('mouseup', () => {
     if (isDrawing) {
         timeline.saveFrame(canvas);
-        updateThumbnails();
+        updateSingleThumbnail(timeline.currentFrame);
     }
     isDrawing = false;
     isPanning = false;
+    stage.style.cursor = 'none';
 });
+
+document.getElementById('ctx-clear').onclick = () => {
+    if (menuTargetFrame === null) return;
+    timeline.frames[menuTargetFrame] = null;
+    if (menuTargetFrame === timeline.currentFrame) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    syncUI();
+};
+
+document.getElementById('ctx-delete').onclick = () => {
+    if (menuTargetFrame === null || timeline.frames.length <= 1) return;
+
+    timeline.frames.splice(menuTargetFrame, 1);
+
+    let newLen = parseInt(durationInput.value) - 1;
+    durationInput.value = newLen;
+    timeline.maxFrames = newLen;
+    frameSlider.max = newLen;
+
+    if (timeline.currentFrame >= timeline.frames.length) {
+        timeline.currentFrame = timeline.frames.length - 1;
+    }
+
+    timeline.gotoFrame(timeline.currentFrame, canvas);
+    syncUI();
+};
 
 
 function floodFill(ctx, x, y, fillColor) {
@@ -651,5 +707,96 @@ function updateToolUI(id) {
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 }
+
+function updateCounter(current, total) {
+    document.getElementById('frameCounter').innerText =
+        `${String(current).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
+}
+
+function updateSingleThumbnail(index) {
+    const thumbs = frameStrip.querySelectorAll('.thumb');
+    const target = thumbs[index];
+    if (target) {
+        if (timeline.frames[index]) {
+            target.classList.add('has-data');
+        } else {
+            target.classList.remove('has-data');
+        }
+    }
+}
+
+ipcRenderer.on('menu-export', async (event, format) => {
+    stopPlayback();
+    const originalFrame = timeline.currentFrame;
+    const fps = parseInt(fpsInput.value) || 12;
+
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const exportCtx = exportCanvas.getContext('2d');
+
+    // Manual capture stream
+    const stream = exportCanvas.captureStream(0);
+    const recorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 5000000
+    });
+
+
+    const chunks = [];
+    recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+    };
+
+    const exportFinished = new Promise((resolve) => {
+        recorder.onstop = async () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const arrayBuffer = await blob.arrayBuffer();
+
+            if (arrayBuffer.byteLength > 0) {
+                ipcRenderer.send('save-exported-file', {
+                    BufferData: arrayBuffer,
+                    requestedFormat: format,
+                    fps: fps
+                });
+            }
+            resolve(); // Tells the promise we are officially done
+        };
+    });
+
+    recorder.start();
+    await new Promise(r => setTimeout(r, 100));
+
+    // The Secret Sauce: We must wait for the recorder to "Warm up" 
+    // before the first requestFrame() or it might return an empty file.
+    await new Promise(r => setTimeout(r, 100));
+
+    for (let i = 0; i <= timeline.maxFrames; i++) {
+        exportCtx.fillStyle = "white";
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+        const imgData = timeline.frames[i];
+        if (imgData) {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
+            exportCtx.drawImage(tempCanvas, 0, 0);
+        }
+
+        // Snap the frame ONCE
+        stream.getVideoTracks()[0].requestFrame();
+
+        // Wait for the duration of exactly one frame
+        await new Promise(r => setTimeout(r, 1000 / fps));
+    }
+
+    // Give the recorder a moment to finalize the last chunk
+    recorder.stop();
+    await exportFinished;
+
+    timeline.gotoFrame(originalFrame, canvas);
+    syncUI();
+});
 
 init();

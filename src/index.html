@@ -6,30 +6,34 @@
     <title>Anima Editor</title>
     <style>
         :root {
-            --bg: #0f0f0f;
-            --panel: #1a1a1a;
+            --bg: #0b0b0b;
+            --panel: #141414;
+            --panel-light: #1e1e1e;
             --accent: #3d5afe;
             --accent-hover: #536dfe;
-            --border: #2e2e2e;
-            --text: #e0e0e0;
-            --text-dim: #888;
-            --radius: 8px;
+            --border: #282828;
+            --text: #ececec;
+            --text-dim: #717171;
+            --radius: 6px;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
 
         body {
             margin: 0;
             background: var(--bg);
             color: var(--text);
-            font-family: 'Inter', 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
+            user-select: none;
         }
 
+        /* Scrollbars */
         ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 4px;
+            height: 4px;
         }
 
         ::-webkit-scrollbar-track {
@@ -41,67 +45,74 @@
             border-radius: 10px;
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: #444;
-        }
-
+        /* Header */
         #header {
-            height: 40px;
+            height: 38px;
             background: var(--panel);
             display: flex;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 15px;
             border-bottom: 1px solid var(--border);
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            color: var(--accent);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1.5px;
             z-index: 100;
         }
 
+        #settings-trigger {
+            margin-left: auto;
+            color: var(--text-dim);
+            transition: color 0.2s;
+            font-size: 14px;
+        }
+
+        #settings-trigger:hover {
+            color: var(--accent);
+        }
+
+        /* Workspace */
         #workspace {
             display: flex;
             flex: 1;
             overflow: hidden;
-            position: relative;
         }
 
+        /* Toolbar */
         #toolbar {
-            width: 70px;
+            width: 60px;
             background: var(--panel);
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 15px 0;
-            gap: 10px;
+            padding: 12px 0;
+            gap: 8px;
             border-right: 1px solid var(--border);
-            z-index: 50;
         }
 
         .tool-btn {
             background: transparent;
             border: none;
             color: var(--text-dim);
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             border-radius: var(--radius);
             cursor: pointer;
-            font-size: 20px;
+            font-size: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .tool-btn:hover {
-            background: #2a2a2a;
-            color: white;
+            background: var(--panel-light);
+            color: #fff;
         }
 
         .tool-btn.active {
             background: var(--accent);
             color: white;
-            box-shadow: 0 4px 12px rgba(61, 90, 254, 0.3);
+            box-shadow: 0 0 15px rgba(61, 90, 254, 0.4);
         }
 
         .tool-settings {
@@ -109,210 +120,206 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
-            padding-bottom: 20px;
-            font-size: 10px;
-            color: var(--text-dim);
+            gap: 12px;
+            padding-bottom: 15px;
         }
 
         .tool-settings label {
-            margin-bottom: -10px;
-            font-weight: bold;
-            text-transform: uppercase;
+            font-size: 9px;
+            font-weight: 900;
+            color: var(--text-dim);
         }
 
+        /* Inputs */
         input[type="range"] {
             -webkit-appearance: none;
             appearance: none;
-            width: 50px;
-            height: 4px;
+            width: 40px;
+            height: 3px;
             background: #333;
             border-radius: 2px;
-            outline: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 12px;
-            height: 12px;
-            background: var(--accent);
+            width: 10px;
+            height: 10px;
+            background: var(--text);
             border-radius: 50%;
             cursor: pointer;
         }
 
+        input[type="number"] {
+            background: #000;
+            color: var(--accent);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 4px;
+            font-family: monospace;
+            outline: none;
+        }
+
+        #colorPicker {
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            overflow: hidden;
+            background: none;
+            cursor: pointer;
+        }
+
+        /* Canvas Area */
         #stage-container {
             flex: 1;
-            background: #0a0a0a;
-            background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
-            background-size: 32px 32px;
-            overflow: hidden;
+            background: #050505;
+            background-image:
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 50px 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             position: relative;
-            cursor: none;
         }
 
         #canvas-wrapper {
             position: absolute;
-            transform-origin: 0 0;
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
             background: white;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
         }
 
+        /* Timeline */
         #timeline-panel {
-            height: 180px;
+            height: 150px;
             background: var(--panel);
             border-top: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 10px 20px;
-            z-index: 100;
+            padding: 12px;
             gap: 10px;
         }
 
         .controls {
             display: flex;
             align-items: center;
-            gap: 20px;
-            margin-bottom: 15px;
-            padding: 0 10px;
+            gap: 15px;
+            height: 30px;
         }
 
         #playBtn {
-            min-width: 90px;
-            height: 32px;
+            padding: 0 20px;
+            height: 28px;
             background: var(--accent);
             border: none;
             color: white;
-            border-radius: 16px;
-            font-weight: 600;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 700;
             cursor: pointer;
-            transition: 0.2s;
         }
 
         #playBtn:hover {
             background: var(--accent-hover);
-            transform: translateY(-1px);
         }
 
         .timeline-slider-container {
             flex: 1;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--text-dim);
+        }
+
+        #frameSlider {
+            flex: 1;
         }
 
         #frame-strip {
             display: flex;
-            gap: 4px;
+            gap: 5px;
             overflow-x: auto;
-            background: #111;
-            padding: 10px;
-            flex: 1;
+            padding: 5px;
+            background: #0d0d0d;
             border-radius: var(--radius);
-            border: 1px solid #222;
-            height: 90px;
+            height: 80px;
+            border: 1px solid var(--border);
         }
 
         .thumb {
-            min-width: 45px;
-            height: 60px;
-            background: #252525;
-            border-radius: 4px;
-            cursor: pointer;
+            min-width: 55px;
+            height: 100%;
+            background: #1a1a1a;
+            border-radius: 3px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: flex-end;
-            padding-bottom: 5px;
-            font-size: 10px;
-            font-weight: bold;
-            color: #555;
-            transition: 0.2s;
+            font-size: 9px;
+            color: #444;
+            padding-bottom: 4px;
             border: 1px solid transparent;
+            flex-shrink: 0;
         }
 
         .thumb.active {
-            background: #333;
             border-color: var(--accent);
             color: var(--accent);
+            background: #222;
         }
 
         .thumb.has-data {
-            background: #2a2a2a;
-            color: #aaa;
-            border-top: 3px solid #444;
+            border-bottom: 2px solid #555;
+            color: #888;
+        }
+
+        /* Settings Overlay */
+        #settings-menu {
+            display: none;
+            position: absolute;
+            top: 45px;
+            right: 10px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            width: 200px;
         }
 
         #cursor {
-            width: 20px;
-            height: 20px;
-            border: 2px solid white;
+            width: 10px;
+            height: 10px;
+            border: 1px solid #fff;
             border-radius: 50%;
             position: fixed;
             pointer-events: none;
             mix-blend-mode: difference;
-            z-index: 9999;
+            z-index: 10000;
             transform: translate(-50%, -50%);
-            display: none;
-        }
-
-        #settings-menu {
-            display: none;
-            position: absolute;
-            top: 40px;
-            right: 0;
-            background: var(--panel);
-            border: 1px solid var(--border);
-            padding: 20px;
-            border-radius: 0 0 0 var(--radius);
-            z-index: 1000;
-            box-shadow: -10px 10px 30px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
-            transition: opacity 0.2s;
-        }
-
-        .thumb {
-            min-width: 60px;
-            height: 70px;
-            background: #202020;
-            border-radius: 4px;
-            border: 2px solid transparent;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: center;
-            font-size: 10px;
-            color: #555;
-            flex-shrink: 0;
-        }
-
-        .thumb.has-data {
-            background: #2a2a2a;
-            border-top: 3px solid var(--accent);
-            color: #eee;
-        }
-
-        .thumb.active {
-            border: 2px solid var(--accent);
-            background: #333;
         }
     </style>
 </head>
 
 <body>
     <div id="cursor"></div>
+
     <div id="header">
-        <div style="flex: 1;">ANIMA // 2D ENGINE</div>
-        <div id="settings-trigger" style="cursor: pointer; padding: 0 15px; border-left: 1px solid var(--border);">⚙️
-            SETTINGS</div>
+        <span style="color: var(--accent)">ANIMA</span>
+        <span style="color: var(--text-dim); margin-left: 8px; font-weight: 400;">// 2D ENGINE v1.0-beta</span>
+
+        <div id="settings-trigger">⚙️</div>
 
         <div id="settings-menu">
-            <div style="display: flex; flex-direction: column; gap: 15px;">
-                <div style="font-size: 11px; color: var(--accent); font-weight: bold;">SMOOTHING (LAZY MOUSE)</div>
-                <input type="range" id="smoothingSlider" min="0" max="0.9" step="0.05" value="0.5"
-                    style="width: 150px;">
-                <div style="width: 100%; height: 1px; background: var(--border);"></div>
-                <div style="font-size: 10px; color: var(--text-dim);">Shortcuts: [B] Brush, [E] Eraser, [G] Bucket,
-                    [Space] Play, [Cmd+Z] Undo</div>
+            <div style="font-size: 9px; color: var(--accent); margin-bottom: 8px;">SMOOTHING (LAZY MOUSE)</div>
+            <input type="range" id="smoothingSlider" min="0" max="0.9" step="0.05" value="0.5" style="width: 100%;">
+            <div style="height: 1px; background: var(--border); margin: 12px 0;"></div>
+            <div style="font-size: 9px; color: var(--text-dim); line-height: 1.6;">
+                B: Brush | E: Eraser | G: Bucket<br>
+                Space: Play | Ctrl+Z: Undo
             </div>
         </div>
     </div>
@@ -320,19 +327,17 @@
     <div id="workspace">
         <div id="toolbar">
             <button class="tool-btn active" id="brushTool" title="Brush (B)">🖌️</button>
-            <button class="tool-btn" id="rectTool" title="Rectangle (R)">🟦</button>
+            <!--<button class="tool-btn" id="rectTool" title="Rectangle (R)">🟦</button>--> <!--SOON!!!!!-->
             <button class="tool-btn" id="eraseTool" title="Eraser (E)">🧽</button>
             <button class="tool-btn" id="bucketTool" title="Paint Bucket (G)">🪣</button>
 
-            <div style="width: 30px; height: 1px; background: var(--border); margin: 10px 0;"></div>
+            <div style="width: 20px; height: 1px; background: var(--border); margin: 5px 0;"></div>
 
-            <input type="color" id="colorPicker" value="#000000"
-                style="width:34px; height:34px; border:2px solid var(--border); border-radius:50%; padding:0; background:none; cursor:pointer;">
+            <input type="color" id="colorPicker" value="#000000">
 
             <div class="tool-settings">
                 <label>SIZE</label>
                 <input type="range" id="brushSize" min="1" max="100" value="5">
-
                 <label>OPAC</label>
                 <input type="range" id="brushOpacity" min="1" max="100" value="100">
             </div>
@@ -341,8 +346,7 @@
         <div id="stage-container">
             <div id="canvas-wrapper">
                 <canvas id="onionCanvas" width="1920" height="1080"
-                    style="position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1;"></canvas>
-
+                    style="position: absolute; pointer-events: none; z-index: 1; opacity: 0.4;"></canvas>
                 <canvas id="mainCanvas" width="1920" height="1080"
                     style="position: relative; z-index: 2; background: transparent;"></canvas>
             </div>
@@ -351,32 +355,52 @@
 
     <div id="timeline-panel">
         <div class="controls">
-            <button id="playBtn">▶ Play</button>
+            <button id="playBtn">▶ PLAY</button>
 
             <div class="timeline-slider-container">
-                <label style="font-size: 11px; color: var(--text-dim);">FPS
-                    <input type="number" id="fpsInput" value="12"
-                        style="width:35px; background:#000; color:var(--accent); border:none; padding:3px; border-radius:4px; font-weight:bold;">
-                </label>
+                <span>FPS</span>
+                <input type="number" id="fpsInput" value="12" style="width: 32px;">
 
-                <label style="font-size: 11px; color: var(--text-dim); margin-left: 10px;">LEN
-                    <input type="number" id="durationInput" value="60" min="1" max="999"
-                        style="width:40px; background:#000; color:var(--accent); border:none; padding:3px; border-radius:4px; font-weight:bold;">
-                </label>
+                <span style="margin-left: 10px;">LEN</span>
+                <input type="number" id="durationInput" value="60" style="width: 40px;">
 
-                <span id="frameCounter"
-                    style="font-size: 11px; font-family: monospace; min-width: 80px; margin-left:10px;">FRAME: 00</span>
+                <span id="frameCounter" style="font-family: monospace; color: var(--accent); margin-left: 10px;">00 /
+                    60</span>
 
-                <input type="range" id="frameSlider" min="0" max="60" value="0"
-                    style="flex: 1; height: 4px; cursor: pointer;">
+                <input type="range" id="frameSlider" min="0" max="60" value="0">
 
-                <label style="font-size: 11px; color: var(--text-dim); cursor: pointer; margin-left: 10px;">
+                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
                     <input type="checkbox" id="loopToggle" checked> LOOP
                 </label>
             </div>
         </div>
 
         <div id="frame-strip"></div>
+    </div>
+
+    <div id="frame-context-menu"
+        style="display: none; position: fixed; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); z-index: 20000; min-width: 120px; padding: 5px 0;">
+        <style>
+            .menu-item {
+                padding: 8px 12px;
+                font-size: 11px;
+                cursor: pointer;
+                color: var(--text);
+                transition: background 0.2s;
+            }
+
+            .menu-item:hover {
+                background: var(--accent);
+            }
+
+            .menu-item.danger:hover {
+                background: #cc3333;
+            }
+        </style>
+        <div class="menu-item" id="ctx-duplicate">Duplicate Frame</div>
+        <div class="menu-item" id="ctx-clear">Clear Content</div>
+        <div style="height: 1px; background: var(--border); margin: 5px 0;"></div>
+        <div class="menu-item danger" id="ctx-delete">Remove Frame</div>
     </div>
 
     <script type="module" src="renderer.js"></script>

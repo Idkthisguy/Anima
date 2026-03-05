@@ -27,16 +27,20 @@ export class Timeline {
     }
 
     recordState() {
-        // Creates a deep copy of the entire timeline for the undo stack
-        const state = this.frames.map(f => f ? new ImageData(new Uint8ClampedArray(f.data), f.width, f.height) : null);
+        const frameData = this.frames[this.currentFrame];
+        const state = {
+            index: this.currentFrame,
+            data: frameData ? new ImageData(new Uint8ClampedArray(frameData.data), frameData.width, frameData.height) : null
+        };
         this.undoStack.push(state);
         if (this.undoStack.length > 50) this.undoStack.shift();
     }
 
     undo(canvas) {
         if (this.undoStack.length === 0) return;
-        this.frames = this.undoStack.pop();
-        this.gotoFrame(this.currentFrame, canvas);
+        const lastAction = this.undoStack.pop();
+        this.frames[lastAction.index] = lastAction.data;
+        this.gotoFrame(lastAction.index, canvas);
     }
 
     saveFrame(canvas) {

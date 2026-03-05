@@ -1,14 +1,14 @@
 {
   "name": "anima",
-  "version": "1.0.0",
+  "version": "1.0.0-beta2",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win"
   },
   "build": {
-    "appId": "com.yourname.anima",
-    "productName": "Anima Editor",
+    "appId": "com.idkthisguy.anima",
+    "productName": "Anima",
     "directories": {
       "output": "dist"
     },

@@ -1,5 +1,12 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegStatic = require('ffmpeg-static');
+
+ffmpeg.setFfmpegPath(ffmpegStatic);
 
 let win;
 
@@ -47,6 +54,21 @@ function createWindow() {
                     }
                 },
                 { type: 'separator' },
+                {
+                    label: 'Export',
+                    submenu: [
+                        {
+                            label: 'Export as MP4',
+                            accelerator: 'CmdOrCtrl+E',
+                            click: () => win.webContents.send('menu-export', 'mp4')
+                        },
+                        {
+                            label: 'Export as WebM',
+                            click: () => win.webContents.send('menu-export', 'webm')
+                        }
+                    ]
+                },
+                { type: 'separator' },
                 { role: 'quit' }
             ]
         },
@@ -74,12 +96,72 @@ function createWindow() {
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// Communication Bridge: When renderer needs a "Save As" dialog because it has no path
 ipcMain.on('request-save-as-dialog', async () => {
     const result = await dialog.showSaveDialog(win, {
         filters: [{ name: 'Anima Project', extensions: ['anima'] }]
     });
     if (!result.canceled) win.webContents.send('menu-save-as', result.filePath);
+});
+
+ipcMain.on('save-exported-file', async (event, { BufferData, extension, requestedFormat, fps }) => {
+    const finalExtension = requestedFormat || extension;
+
+    const result = await dialog.showSaveDialog(win, {
+        filters: [{ name: 'Video File', extensions: [finalExtension] }]
+    });
+
+    if (result.canceled) return;
+
+    const buffer = Buffer.from(BufferData);
+
+    if (finalExtension === 'webm') {
+        fs.writeFileSync(result.filePath, buffer);
+        dialog.showMessageBox(win, { type: 'info', title: 'Export Complete', message: 'WebM saved successfully!' });
+    }
+    else if (finalExtension === 'mp4') {
+        const tempWebmPath = path.join(os.tmpdir(), `anima_temp_${Date.now()}.webm`);
+        const currentFPS = fps || 12;
+
+        try {
+            // 1. Write the file
+            fs.writeFileSync(tempWebmPath, buffer);
+
+            // 2. Small delay to ensure the OS has released the file lock
+            setTimeout(() => {
+                if (!fs.existsSync(tempWebmPath) || fs.statSync(tempWebmPath).size === 0) {
+                    dialog.showErrorBox('Export Error', 'Temp file was not created correctly.');
+                    return;
+                }
+
+                ffmpeg()
+                    .input(tempWebmPath)
+                    .inputFPS(currentFPS)
+                    .outputOptions([
+                        '-c:v libx264',
+                        '-pix_fmt yuv420p',
+                        '-crf 17',
+                        '-movflags +faststart',
+                        '-vf', `fps=${currentFPS}` // Force the output stream to keep the rhythm
+                    ])
+                    .on('start', (commandLine) => {
+                        console.log('Spawned FFmpeg with command: ' + commandLine);
+                    })
+                    .on('end', () => {
+                        if (fs.existsSync(tempWebmPath)) fs.unlinkSync(tempWebmPath);
+                        dialog.showMessageBox(win, { type: 'info', title: 'Export Complete', message: 'MP4 saved successfully!' });
+                    })
+                    .on('error', (err) => {
+                        console.error('FFmpeg Error:', err);
+                        if (fs.existsSync(tempWebmPath)) fs.unlinkSync(tempWebmPath);
+                        dialog.showErrorBox('Export Failed', `FFmpeg Error: ${err.message}`);
+                    })
+                    .save(result.filePath);
+            }, 200); // 200ms is usually enough to clear the "End of File" race condition
+
+        } catch (e) {
+            dialog.showErrorBox('Write Error', `Failed to write temp file: ${e.message}`);
+        }
+    }
 });
 
 app.whenReady().then(createWindow);
