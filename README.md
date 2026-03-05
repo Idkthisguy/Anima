@@ -1,5 +1,5 @@
-# Anima (v1.0.0-beta)
-**A lightweight 2D animation engine.**
+# 🎨 Anima (v1.0.0-beta)
+**A lightweight, portable 2D animation engine.**
 
 Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
 
@@ -30,7 +30,3 @@ Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar
 - [ ] **Vector Engine:** Moving from pixels to paths for infinite scaling.
 - [ ] **Tweening:** Automated motion paths between keyframes.
 - [ ] **Audio Support:** Multi-track scrubbing for lip-syncing.
-
----
-
-Creator's note: VLC is recommended to play exported MP4 files from Anima in Windows, as Window's Media Player kinda breaks the playback of the video file as what I've tested
