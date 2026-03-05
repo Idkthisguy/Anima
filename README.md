@@ -4,7 +4,6 @@
 Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
 
 
-
 ## Key Features
 - **Dynamic Timeline:** Frame-by-frame control with a high-performance preview.
 - **Onion Skinning:** Blue-tinted ghosting for precise motion tracking.
