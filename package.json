@@ -1,6 +1,6 @@
 {
   "name": "anima",
-  "version": "1.0.0-beta2",
+  "version": "1.0.0",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -12,9 +12,43 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!dist/*",
+      "!build/*"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "anima",
+        "name": "Anima Project",
+        "description": "Anima Animation Project File",
+        "role": "Editor",
+        "icon": "icon.ico"
+      }
+    ],
     "win": {
-      "target": "portable",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Anima",
+      "uninstallDisplayName": "Anima Animation Tool",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "include": "build/installer.nsh"
+    },
+    "portable": {
+      "artifactName": "${productName} Portable.${ext}"
     }
   },
   "devDependencies": {

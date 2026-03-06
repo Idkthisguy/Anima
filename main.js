@@ -11,6 +11,7 @@ ffmpeg.setFfmpegPath(ffmpegStatic);
 let win;
 
 function createWindow() {
+    if (win) return;
     win = new BrowserWindow({
         width: 1300,
         height: 900,
