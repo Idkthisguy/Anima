@@ -32,14 +32,23 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          
       - run: npm install
+      
       - run: npx cap add ios || true 
+      
       - run: npx cap sync ios
       
+      - name: Install Pods
+        run: |
+          cd ios/App
+          pod install
+
       - name: Build iOS (No Signing)
         run: |
           xcodebuild -workspace ios/App/App.xcworkspace \
@@ -48,7 +57,8 @@ jobs:
                      -sdk iphoneos \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
-                     ENTITLEMENTS_REQUIRED=NO
+                     ENTITLEMENTS_REQUIRED=NO \
+                     clean build
           
       - name: Upload iOS Project
         uses: actions/upload-artifact@v4
