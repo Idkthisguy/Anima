@@ -411,6 +411,115 @@
         .platform-mobile #cursor {
             display: none !important;
         }
+
+        body.platform-mobile #header {
+            display: none;
+        }
+
+        body.platform-mobile #workspace {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        body.platform-mobile #stage-container {
+            background-size: 30px 30px;
+        }
+
+        body.platform-mobile #toolbar {
+            position: absolute;
+            left: calc(15px + env(safe-area-inset-left));
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            height: auto;
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 15px 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        body.platform-mobile .tool-settings {
+            position: absolute;
+            right: calc(15px + env(safe-area-inset-right));
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            background: rgba(20, 20, 20, 0.8);
+            backdrop-filter: blur(15px);
+            border-radius: 30px;
+            padding: 20px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        body.platform-mobile .tool-settings input[type="range"] {
+            writing-mode: bt-lr;
+            -webkit-appearance: slider-vertical;
+            appearance: slider-vertical;
+            width: 15px;
+            height: 120px;
+            background: #333;
+        }
+
+        body.platform-mobile #timeline-panel {
+            position: absolute;
+            bottom: calc(15px + env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 600px;
+            height: 110px;
+            background: rgba(15, 15, 15, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+        }
+
+        body.platform-mobile #cursor {
+            display: none !important;
+        }
+
+        body.platform-mobile .tool-btn {
+            width: 50px;
+            height: 50px;
+            font-size: 22px;
+        }
+
+        /* Add this to your <style> block */
+        body.platform-mobile #toolbar {
+            position: absolute;
+            left: env(safe-area-inset-left, 15px);
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            height: auto;
+            background: rgba(20, 20, 20, 0.85);
+            /* Glass effect */
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 20px 0;
+        }
+
+        body.platform-mobile .tool-settings {
+            position: absolute;
+            right: env(safe-area-inset-right, 15px);
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+        }
     </style>
 </head>
 
@@ -530,15 +639,22 @@
     </div>
 
     <script type="module">
-        const isElectron = !!(window.process && window.process.type);
-
-        document.body.classList.add(isElectron ? 'platform-desktop' : 'platform-mobile');
+        const isCapacitor = !!window.Capacitor;
+        const isMobile = isCapacitor || ('ontouchstart' in window);
 
         const script = document.createElement('script');
         script.type = 'module';
-        script.src = isElectron ? 'desktop-renderer.js' : 'mobile-renderer.js';
+
+        if (isMobile) {
+            document.body.classList.add('platform-mobile');
+            script.src = 'mobile-renderer.js';
+            if (isCapacitor) window.Capacitor.Plugins.StatusBar?.hide();
+        } else {
+            document.body.classList.add('platform-desktop');
+            script.src = 'desktop-renderer.js';
+        }
+
         document.body.appendChild(script);
     </script>
-</body>
 
 </html>
