@@ -16,7 +16,6 @@ async function loadPlatformModules() {
         ipcRenderer = require('electron').ipcRenderer;
         fs = require('fs');
     } else {
-        // Dynamic import for Capacitor to prevent Electron from crashing on it
         const module = await import('@capacitor-community/media');
         Media = module.Media;
     }
@@ -83,6 +82,14 @@ let animationId = null;
 
 let currentFilePath = null;
 
+let initialPinchDistance = 0;
+let initialScale = 0;
+let lastTouchMidX = 0;
+let lastTouchMidY = 0;
+let isPinching = false;
+
+let lastTapTime = 0;
+
 const toolSettings = {
     brush: { size: 5, opacity: 1, color: '#000000' },
     erase: { size: 20, opacity: 1 },
@@ -92,8 +99,11 @@ const toolSettings = {
 const opacitySlider = document.getElementById('brushOpacity');
 
 function init() {
-    offsetX = (stage.clientWidth - (canvas.width * scale)) / 2;
-    offsetY = (stage.clientHeight - (canvas.height * scale)) / 2;
+    const stageW = stage.clientWidth || window.innerWidth;
+    const stageH = stage.clientHeight || window.innerHeight;
+
+    offsetX = (stageW - (canvas.width * scale)) / 2;
+    offsetY = (stageH - (canvas.height * scale)) / 2;
 
     updateView();
     syncUI();
@@ -101,9 +111,14 @@ function init() {
 
 function syncUI() {
     frameSlider.value = timeline.currentFrame;
-    frameCounter.innerText = `Frame: ${timeline.currentFrame}`;
+    frameCounter.innerText = `Frame: ${timeline.currentFrame + 1}`;
+
+    const thumbs = frameStrip.querySelectorAll('.thumb');
+    thumbs.forEach((t, i) => {
+        t.classList.toggle('active', i === timeline.currentFrame);
+    });
+
     updateOnionSkin();
-    updateThumbnails();
 }
 
 function getProjectData() {
@@ -444,13 +459,23 @@ const endDrawing = () => {
     stage.style.cursor = 'default';
 };
 
-window.addEventListener('touchend', () => {
+window.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0 && e.changedTouches.length === 2) {
+        const now = Date.now();
+        if (now - lastTapTime < 300) {
+            timeline.undo(canvas);
+            syncUI();
+        }
+        lastTapTime = now;
+    }
+
     if (isDrawing) {
         timeline.saveFrame(canvas);
         updateSingleThumbnail(timeline.currentFrame);
     }
     isDrawing = false;
     isPanning = false;
+    isPinching = false;
 }, { passive: false });
 
 stage.addEventListener('wheel', (e) => {
@@ -491,6 +516,9 @@ canvas.addEventListener('touchmove', (e) => {
 
 window.addEventListener('mouseup', endDrawing);
 window.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) {
+        isPinching = false;
+    }
     if (isDrawing) {
         timeline.saveFrame(canvas);
         updateSingleThumbnail(timeline.currentFrame);
@@ -668,13 +696,10 @@ function getCanvasCoords(e) {
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
 
-    return {
-        x: (clientX - rect.left) * scaleX,
-        y: (clientY - rect.top) * scaleY
-    };
+    return { x, y };
 }
 
 const settingsTrigger = document.getElementById('settings-trigger');
@@ -751,14 +776,35 @@ function updateSingleThumbnail(index) {
     }
 }
 
+function getTouchDist(t1, t2) {
+    return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+}
+
+function getTouchMid(t1, t2) {
+    return {
+        x: (t1.clientX + t2.clientX) / 2,
+        y: (t1.clientY + t2.clientY) / 2
+    };
+}
+
 function onStartDrawing(e) {
     if (timeline.isPlaying) return;
-    // Check if it's a left click (0) or a touch event
+
+    if (e.touches && e.touches.length === 2) {
+        isDrawing = false;
+        isPinching = true;
+        initialPinchDistance = getTouchDist(e.touches[0], e.touches[1]);
+        initialScale = scale;
+        const mid = getTouchMid(e.touches[0], e.touches[1]);
+        lastTouchMidX = mid.x;
+        lastTouchMidY = mid.y;
+        return;
+    }
+
     if (e.type === 'mousedown' && e.button !== 0) return;
 
     isDrawing = true;
     timeline.recordState();
-
     const pos = getCanvasCoords(e);
     smoothedX = pos.x;
     smoothedY = pos.y;
@@ -784,16 +830,26 @@ function onMoveDrawing(e) {
         return;
     }
 
-    const cursor = document.getElementById('cursor');
-    if (cursor) {
-        if (e.touches) {
-            cursor.style.display = 'none';
-        } else {
-            cursor.style.display = 'block';
-            cursor.style.left = clientX + 'px';
-            cursor.style.top = clientY + 'px';
-            updateCursor(e);
-        }
+    if (isPinching && e.touches.length === 2) {
+        const currentDist = getTouchDist(e.touches[0], e.touches[1]);
+        const mid = getTouchMid(e.touches[0], e.touches[1]);
+
+        const zoomFactor = currentDist / initialPinchDistance;
+        const newScale = Math.min(Math.max(initialScale * zoomFactor, 0.05), 10);
+
+        offsetX -= (mid.x - offsetX) * (newScale / scale - 1);
+        offsetY -= (mid.y - offsetY) * (newScale / scale - 1);
+
+        scale = newScale;
+
+        offsetX += (mid.x - lastTouchMidX);
+        offsetY += (mid.y - lastTouchMidY);
+
+        lastTouchMidX = mid.x;
+        lastTouchMidY = mid.y;
+
+        updateView();
+        return;
     }
 
     if (!isDrawing) return;
@@ -811,7 +867,6 @@ function onMoveDrawing(e) {
             drawingCtx.lineTo(currentPath[i].x, currentPath[i].y);
         }
         drawingCtx.stroke();
-
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (timeline.frames[timeline.currentFrame]) {
             ctx.putImageData(timeline.frames[timeline.currentFrame], 0, 0);
@@ -828,6 +883,7 @@ function onMoveDrawing(e) {
         currentPath.push({ x: smoothedX, y: smoothedY });
     }
 }
+
 async function handleExport(format) {
     const exportOverlay = document.getElementById('export-overlay');
     const exportFill = document.getElementById('export-bar-fill');
@@ -883,4 +939,9 @@ async function handleExport(format) {
     recorder.stop();
 }
 
-init();
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        init();
+        updateThumbnails();
+    }, 50);
+});
