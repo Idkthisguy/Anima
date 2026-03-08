@@ -158,17 +158,18 @@ function setTool(toolId, toolName) {
     currentTool = toolName;
 
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(toolId).classList.add('active');
+    const activeBtn = document.getElementById(toolId);
+    if (activeBtn) activeBtn.classList.add('active');
 
     if (toolSettings[currentTool]) {
         brushSize.value = toolSettings[currentTool].size;
         opacitySlider.value = toolSettings[currentTool].opacity * 100;
-
         if (currentTool === 'brush') {
-            colorPicker.value = toolSettings[currentTool].color;
+            colorPicker.value = toolSettings.brush.color;
         }
     }
 
+    setupContext(ctx);
     setupContext(drawingCtx);
 }
 
@@ -705,6 +706,23 @@ function setupContext(targetCtx = ctx) {
 function updateView() {
     wrapper.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
 }
+
+const tools = [
+    { id: 'brushTool', name: 'brush' },
+    { id: 'eraseTool', name: 'erase' },
+    { id: 'bucketTool', name: 'bucket' }
+];
+
+tools.forEach(tool => {
+    const btn = document.getElementById(tool.id);
+    if (btn) {
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault(); // Stop ghost clicks
+            console.log("Switching to:", tool.name);
+            setTool(tool.id, tool.name);
+        });
+    }
+});
 
 document.getElementById('brushTool').onclick = () => setTool('brushTool', 'brush');
 document.getElementById('eraseTool').onclick = () => setTool('eraseTool', 'erase');
