@@ -5,6 +5,12 @@ let Media = null;
 
 const isElectron = typeof window !== 'undefined' && window.process && window.process.type;
 
+if (isElectron) {
+    document.body.classList.add('platform-desktop');
+} else {
+    document.body.classList.add('platform-mobile');
+}
+
 async function loadPlatformModules() {
     if (isElectron) {
         ipcRenderer = require('electron').ipcRenderer;
