@@ -1,10 +1,21 @@
 import { Timeline } from "./timeline.js";
-const { ipcRenderer } = require('electron');
+let ipcRenderer = null;
+let fs = null;
+let Media = null;
 
-const { remote } = require('electron');
-const dialog = require('electron').remote ? require('electron').remote.dialog : null;
+const isElectron = typeof window !== 'undefined' && window.process && window.process.type;
 
-const fs = require('fs');
+async function loadPlatformModules() {
+    if (isElectron) {
+        ipcRenderer = require('electron').ipcRenderer;
+        fs = require('fs');
+    } else {
+        // Dynamic import for Capacitor to prevent Electron from crashing on it
+        const module = await import('@capacitor-community/media');
+        Media = module.Media;
+    }
+}
+loadPlatformModules();
 
 window.focus();
 
@@ -80,6 +91,57 @@ function init() {
 
     updateView();
     syncUI();
+}
+
+function syncUI() {
+    frameSlider.value = timeline.currentFrame;
+    frameCounter.innerText = `Frame: ${timeline.currentFrame}`;
+    updateOnionSkin();
+    updateThumbnails();
+}
+
+function getProjectData() {
+    return JSON.stringify({
+        appName: "Anima",
+        version: "1.0-beta",
+        fps: fpsInput.value,
+        maxFrames: timeline.maxFrames,
+        frames: timeline.frames.map(imgData => {
+            if (!imgData) return null;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
+            return tempCanvas.toDataURL();
+        })
+    });
+}
+
+
+function updateThumbnails() {
+    frameStrip.innerHTML = '';
+    timeline.frames.forEach((frame, i) => {
+        const t = document.createElement('div');
+        t.className = `thumb ${i === timeline.currentFrame ? 'active' : ''} ${frame ? 'has-data' : ''}`;
+        t.innerText = i + 1;
+
+        t.onclick = () => {
+            stopPlayback();
+            timeline.gotoFrame(i, canvas);
+            syncUI();
+        };
+
+        t.oncontextmenu = (e) => {
+            e.preventDefault();
+            menuTargetFrame = i;
+
+            frameCtxMenu.style.display = 'block';
+            frameCtxMenu.style.left = e.clientX + 'px';
+            frameCtxMenu.style.top = e.clientY + 'px';
+        };
+
+        frameStrip.appendChild(t);
+    });
 }
 
 document.getElementById('loopToggle').addEventListener('click', (e) => {
@@ -212,141 +274,110 @@ window.addEventListener('keydown', (e) => {
     }
 }, true);
 
-ipcRenderer.on('menu-undo', () => { timeline.undo(canvas); syncUI(); });
-ipcRenderer.on('menu-copy', () => timeline.copyFrame());
-ipcRenderer.on('menu-paste', () => { timeline.pasteFrame(canvas); syncUI(); });
-ipcRenderer.on('menu-clear', () => { timeline.clearFrame(canvas); syncUI(); });
-ipcRenderer.on('menu-save', () => {
-    if (currentFilePath) {
-        try {
-            fs.writeFileSync(currentFilePath, getProjectData());
-            console.log("Saved to:", currentFilePath);
-            alert("Project Saved!");
-        } catch (err) {
-            alert("Save failed: " + err.message);
+if (isElectron) {
+    ipcRenderer.on('menu-undo', () => { timeline.undo(canvas); syncUI(); });
+    ipcRenderer.on('menu-copy', () => timeline.copyFrame());
+    ipcRenderer.on('menu-paste', () => { timeline.pasteFrame(canvas); syncUI(); });
+    ipcRenderer.on('menu-clear', () => { timeline.clearFrame(canvas); syncUI(); });
+    ipcRenderer.on('menu-save', () => {
+        if (currentFilePath) {
+            try {
+                fs.writeFileSync(currentFilePath, getProjectData());
+                console.log("Saved to:", currentFilePath);
+                alert("Project Saved!");
+            } catch (err) {
+                alert("Save failed: " + err.message);
+            }
+        } else {
+            ipcRenderer.send('request-save-as-dialog');
         }
-    } else {
-        ipcRenderer.send('request-save-as-dialog');
-    }
-});
+    });
 
-ipcRenderer.on('menu-save-as', (event, filePath) => {
-    if (!filePath) return;
-
-    currentFilePath = filePath;
-    try {
-        fs.writeFileSync(currentFilePath, getProjectData());
-        alert("Project Saved!");
-    } catch (err) {
-        alert("Save As failed: " + err.message);
-    }
-});
-
-ipcRenderer.on('menu-open', async (event, filePath) => {
-    if (!filePath) return;
-
-    try {
-        const rawData = fs.readFileSync(filePath, 'utf8');
-        const data = JSON.parse(rawData);
+    ipcRenderer.on('menu-save-as', (event, filePath) => {
+        if (!filePath) return;
 
         currentFilePath = filePath;
-        fpsInput.value = data.fps;
-
-        for (let i = 0; i < data.frames.length; i++) {
-            if (data.frames[i]) {
-                const img = new Image();
-                img.src = data.frames[i];
-                await img.decode();
-                const tc = document.createElement('canvas');
-                tc.width = canvas.width;
-                tc.height = canvas.height;
-                const tctx = tc.getContext('2d');
-                tctx.drawImage(img, 0, 0);
-                timeline.frames[i] = tctx.getImageData(0, 0, canvas.width, canvas.height);
-            } else {
-                timeline.frames[i] = null;
-            }
+        try {
+            fs.writeFileSync(currentFilePath, getProjectData());
+            alert("Project Saved!");
+        } catch (err) {
+            alert("Save As failed: " + err.message);
         }
-        durationInput.value = data.maxFrames || 60;
-        frameSlider.max = data.maxFrames || 60;
-        timeline.setDuration(parseInt(durationInput.value));
-        timeline.gotoFrame(0, canvas);
-        syncUI();
-        console.log("Loaded:", currentFilePath);
-    } catch (err) {
-        alert("Failed to open file: " + err.message);
-    }
-});
-
-function getProjectData() {
-    return JSON.stringify({
-        appName: "Anima",
-        version: "1.0-beta",
-        fps: fpsInput.value,
-        maxFrames: timeline.maxFrames,
-        frames: timeline.frames.map(imgData => {
-            if (!imgData) return null;
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
-            return tempCanvas.toDataURL();
-        })
     });
-}
 
-function syncUI() {
-    frameSlider.value = timeline.currentFrame;
-    frameCounter.innerText = `Frame: ${timeline.currentFrame}`;
-    updateOnionSkin();
-    updateThumbnails();
-}
+    ipcRenderer.on('menu-open', async (event, filePath) => {
+        if (!filePath) return;
 
-function updateThumbnails() {
-    frameStrip.innerHTML = '';
-    timeline.frames.forEach((frame, i) => {
-        const t = document.createElement('div');
-        t.className = `thumb ${i === timeline.currentFrame ? 'active' : ''} ${frame ? 'has-data' : ''}`;
-        t.innerText = i + 1;
+        try {
+            const rawData = fs.readFileSync(filePath, 'utf8');
+            const data = JSON.parse(rawData);
 
-        t.onclick = () => {
-            stopPlayback();
-            timeline.gotoFrame(i, canvas);
+            currentFilePath = filePath;
+            fpsInput.value = data.fps;
+
+            for (let i = 0; i < data.frames.length; i++) {
+                if (data.frames[i]) {
+                    const img = new Image();
+                    img.src = data.frames[i];
+                    await img.decode();
+                    const tc = document.createElement('canvas');
+                    tc.width = canvas.width;
+                    tc.height = canvas.height;
+                    const tctx = tc.getContext('2d');
+                    tctx.drawImage(img, 0, 0);
+                    timeline.frames[i] = tctx.getImageData(0, 0, canvas.width, canvas.height);
+                } else {
+                    timeline.frames[i] = null;
+                }
+            }
+            durationInput.value = data.maxFrames || 60;
+            frameSlider.max = data.maxFrames || 60;
+            timeline.setDuration(parseInt(durationInput.value));
+            timeline.gotoFrame(0, canvas);
             syncUI();
-        };
-
-        t.oncontextmenu = (e) => {
-            e.preventDefault();
-            menuTargetFrame = i;
-
-            frameCtxMenu.style.display = 'block';
-            frameCtxMenu.style.left = e.clientX + 'px';
-            frameCtxMenu.style.top = e.clientY + 'px';
-        };
-
-        frameStrip.appendChild(t);
+            console.log("Loaded:", currentFilePath);
+        } catch (err) {
+            alert("Failed to open file: " + err.message);
+        }
     });
+
+    window.addEventListener('click', () => {
+        frameCtxMenu.style.display = 'none';
+    });
+
+    ipcRenderer.on('menu-new', () => {
+        if (confirm("Create new project? This will wipe your current canvas.")) {
+            timeline.frames = new Array(timeline.maxFrames + 1).fill(null);
+            timeline.undoStack = [];
+            timeline.gotoFrame(0, canvas);
+            syncUI();
+        }
+    });
+
+    ipcRenderer.on('menu-reset-view', () => {
+        scale = 0.5;
+        offsetX = (stage.clientWidth - (canvas.width * scale)) / 2;
+        offsetY = (stage.clientHeight - (canvas.height * scale)) / 2;
+        updateView();
+    });
+
+
+    const exportOverlay = document.getElementById('export-overlay');
+    const exportFill = document.getElementById('export-bar-fill');
+    const exportStatus = document.getElementById('export-status');
+
+    ipcRenderer.on('menu-export', (e, fmt) => handleExport(fmt));
+
+    ipcRenderer.on('export-progress', (event, percent) => {
+        exportFill.style.width = `${percent}%`;
+        exportStatus.innerText = `Converting to MP4: ${percent}%`;
+    });
+
+    ipcRenderer.on('export-done', () => {
+        exportOverlay.style.display = 'none';
+    });
+
 }
-
-window.addEventListener('click', () => {
-    frameCtxMenu.style.display = 'none';
-});
-
-ipcRenderer.on('menu-new', () => {
-    if (confirm("Create new project? This will wipe your current canvas.")) {
-        timeline.frames = new Array(timeline.maxFrames + 1).fill(null);
-        timeline.undoStack = [];
-        timeline.gotoFrame(0, canvas);
-        syncUI();
-    }
-});
-
-ipcRenderer.on('menu-reset-view', () => {
-    scale = 0.5;
-    offsetX = (stage.clientWidth - (canvas.width * scale)) / 2;
-    offsetY = (stage.clientHeight - (canvas.height * scale)) / 2;
-    updateView();
-});
 
 frameSlider.oninput = (e) => {
     stopPlayback();
@@ -395,6 +426,35 @@ playBtn.onclick = () => {
         play();
     }
 };
+
+function handleTouch(e) {
+    if (timeline.isPlaying) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+
+    // Create a fake mouse event to reuse your existing logic
+    const mouseEvent = new MouseEvent(
+        e.type === 'touchstart' ? 'mousedown' :
+            e.type === 'touchmove' ? 'mousemove' : 'mouseup',
+        {
+            clientX: touch ? touch.clientX : 0,
+            clientY: touch ? touch.clientY : 0,
+            button: 0
+        }
+    );
+
+    // Dispatch to the element that needs it
+    if (e.type === 'touchstart' || e.type === 'touchmove') {
+        canvas.dispatchEvent(mouseEvent);
+    } else {
+        window.dispatchEvent(mouseEvent);
+    }
+}
+
+canvas.addEventListener('touchstart', handleTouch, { passive: false });
+canvas.addEventListener('touchmove', handleTouch, { passive: false });
+window.addEventListener('touchend', handleTouch, { passive: false });
 
 stage.addEventListener('wheel', (e) => {
     if (e.ctrlKey) {
@@ -734,72 +794,60 @@ function updateSingleThumbnail(index) {
     }
 }
 
-ipcRenderer.on('menu-export', async (event, format) => {
+async function handleExport(format) {
+    const exportOverlay = document.getElementById('export-overlay');
+    const exportFill = document.getElementById('export-bar-fill');
+
     stopPlayback();
-    const originalFrame = timeline.currentFrame;
-    const fps = parseInt(fpsInput.value) || 12;
+    exportOverlay.style.display = 'flex';
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = canvas.width;
     exportCanvas.height = canvas.height;
     const exportCtx = exportCanvas.getContext('2d');
-
     const stream = exportCanvas.captureStream(0);
-    const recorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: 5000000
-    });
-
-
+    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
     const chunks = [];
-    recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
+
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+
+        if (isElectron) {
+            const arrayBuffer = await blob.arrayBuffer();
+            ipcRenderer.send('save-exported-file', { BufferData: arrayBuffer, requestedFormat: format, fps: parseInt(fpsInput.value) || 12 });
+        } else {
+            // MOBILE: Save to Gallery
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = async () => {
+                try {
+                    await Media.saveVideo({ path: reader.result });
+                    alert("Saved to Photos!");
+                } catch (err) {
+                    console.error("Gallery save failed:", err);
+                    alert("Could not save to photos. Check permissions.");
+                }
+                exportOverlay.style.display = 'none';
+            };
+        }
     };
 
-    const exportFinished = new Promise((resolve) => {
-        recorder.onstop = async () => {
-            const blob = new Blob(chunks, { type: 'video/webm' });
-            const arrayBuffer = await blob.arrayBuffer();
-
-            if (arrayBuffer.byteLength > 0) {
-                ipcRenderer.send('save-exported-file', {
-                    BufferData: arrayBuffer,
-                    requestedFormat: format,
-                    fps: fps
-                });
-            }
-            resolve();
-        };
-    });
-
     recorder.start();
-    await new Promise(r => setTimeout(r, 100));
-
-    await new Promise(r => setTimeout(r, 100));
-
     for (let i = 0; i <= timeline.maxFrames; i++) {
-        exportCtx.fillStyle = "white";
+        exportCtx.fillStyle = "#FFFFFF";
         exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-
-        const imgData = timeline.frames[i];
-        if (imgData) {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
-            exportCtx.drawImage(tempCanvas, 0, 0);
+        if (timeline.frames[i]) {
+            const temp = document.createElement('canvas');
+            temp.width = canvas.width; temp.height = canvas.height;
+            temp.getContext('2d').putImageData(timeline.frames[i], 0, 0);
+            exportCtx.drawImage(temp, 0, 0);
         }
-
         stream.getVideoTracks()[0].requestFrame();
-
-        await new Promise(r => setTimeout(r, 1000 / fps));
+        await new Promise(r => setTimeout(r, 1000 / (parseInt(fpsInput.value) || 12)));
+        exportFill.style.width = `${(i / timeline.maxFrames) * 100}%`;
     }
-
     recorder.stop();
-    await exportFinished;
-
-    timeline.gotoFrame(originalFrame, canvas);
-    syncUI();
-});
+}
 
 init();

@@ -9,6 +9,7 @@
   "build": {
     "appId": "com.idkthisguy.anima",
     "productName": "Anima",
+    "compression": "maximum",
     "directories": {
       "output": "dist"
     },
@@ -28,8 +29,18 @@
     ],
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "icon.ico"
     },
@@ -37,18 +48,22 @@
       "oneClick": false,
       "perMachine": true,
       "allowToChangeInstallationDirectory": true,
+      "license": "LICENSE.txt",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Anima",
       "uninstallDisplayName": "Anima Animation Tool",
-      "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
       "installerIcon": "icon.ico",
       "uninstallerIcon": "icon.ico",
-      "include": "build/installer.nsh"
+      "include": "build/installer.nsh",
+      "installerHeaderIcon": "icon.ico",
+      "installerSidebar": "build/sidebar-installer.bmp",
+      "uninstallerSidebar": "build/sidebar-uninstaller.bmp"
     },
     "portable": {
-      "artifactName": "${productName} Portable.${ext}"
+      "artifactName": "${productName}_Portable_v${version}.${ext}",
+      "unpackDirName": "anima-portable"
     }
   },
   "devDependencies": {
@@ -56,6 +71,11 @@
     "electron-builder": "^26.8.1"
   },
   "dependencies": {
+    "@capacitor-community/media": "^9.0.2",
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.2.0",
     "ffmpeg-static": "^5.3.0",
     "fluent-ffmpeg": "^2.1.3"
   }

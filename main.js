@@ -104,9 +104,8 @@ ipcMain.on('request-save-as-dialog', async () => {
     if (!result.canceled) win.webContents.send('menu-save-as', result.filePath);
 });
 
-ipcMain.on('save-exported-file', async (event, { BufferData, extension, requestedFormat, fps }) => {
-    const finalExtension = requestedFormat || extension;
-
+ipcMain.on('save-exported-file', async (event, { BufferData, requestedFormat, fps }) => {
+    const finalExtension = requestedFormat || 'mp4';
     const result = await dialog.showSaveDialog(win, {
         filters: [{ name: 'Video File', extensions: [finalExtension] }]
     });
@@ -114,53 +113,60 @@ ipcMain.on('save-exported-file', async (event, { BufferData, extension, requeste
     if (result.canceled) return;
 
     const buffer = Buffer.from(BufferData);
+    const tempDir = app.getPath('userData');
+    const tempWebmPath = path.join(tempDir, `export_temp_${Date.now()}.webm`);
+    const currentFPS = parseInt(fps) || 12;
 
-    if (finalExtension === 'webm') {
-        fs.writeFileSync(result.filePath, buffer);
-        dialog.showMessageBox(win, { type: 'info', title: 'Export Complete', message: 'WebM saved successfully!' });
-    }
-    else if (finalExtension === 'mp4') {
-        const tempWebmPath = path.join(os.tmpdir(), `anima_temp_${Date.now()}.webm`);
-        const currentFPS = fps || 12;
-
-        try {
-            fs.writeFileSync(tempWebmPath, buffer);
-
-            setTimeout(() => {
-                if (!fs.existsSync(tempWebmPath) || fs.statSync(tempWebmPath).size === 0) {
-                    dialog.showErrorBox('Export Error', 'Temp file was not created correctly.');
-                    return;
-                }
-
-                ffmpeg()
-                    .input(tempWebmPath)
-                    .inputFPS(currentFPS)
-                    .outputOptions([
-                        '-c:v libx264',
-                        '-pix_fmt yuv420p',
-                        '-crf 17',
-                        '-movflags +faststart',
-                        '-vf', `fps=${currentFPS}`
-                    ])
-                    .on('start', (commandLine) => {
-                        console.log('Spawned FFmpeg with command: ' + commandLine);
-                    })
-                    .on('end', () => {
-                        if (fs.existsSync(tempWebmPath)) fs.unlinkSync(tempWebmPath);
-                        dialog.showMessageBox(win, { type: 'info', title: 'Export Complete', message: 'MP4 saved successfully!' });
-                    })
-                    .on('error', (err) => {
-                        console.error('FFmpeg Error:', err);
-                        if (fs.existsSync(tempWebmPath)) fs.unlinkSync(tempWebmPath);
-                        dialog.showErrorBox('Export Failed', `FFmpeg Error: ${err.message}`);
-                    })
-                    .save(result.filePath);
-            }, 200);
-
-        } catch (e) {
-            dialog.showErrorBox('Write Error', `Failed to write temp file: ${e.message}`);
+    fs.writeFile(tempWebmPath, buffer, (err) => {
+        if (err) {
+            dialog.showErrorBox('Write Error', `Failed to write temp file: ${err.message}`);
+            return;
         }
-    }
+
+        if (finalExtension === 'webm') {
+            fs.copyFileSync(tempWebmPath, result.filePath);
+            fs.unlinkSync(tempWebmPath);
+            dialog.showMessageBox(win, { type: 'info', title: 'Success', message: 'WebM saved!' });
+            return;
+        }
+
+        // UNIVERSAL MP4 SETTINGS
+        ffmpeg(tempWebmPath)
+            .inputOptions([
+                '-fflags +genpts',
+                `-r ${currentFPS}`
+            ])
+            .inputFPS(currentFPS)
+            .outputOptions([
+                '-c:v libx264',
+                '-pix_fmt yuv420p',
+                '-profile:v high',
+                '-level 4.0',
+                '-crf 18',
+                '-preset slow',
+                '-movflags +faststart',
+                '-vf', `fps=${currentFPS},scale=trunc(iw/2)*2:trunc(ih/2)*2`
+            ])
+            .on('start', (cmd) => console.log('FFmpeg Command:', cmd))
+            .on('progress', (progress) => {
+                win.webContents.send('export-progress', Math.round(progress.percent || 0));
+            })
+            .on('end', () => {
+                if (fs.existsSync(tempWebmPath)) fs.unlinkSync(tempWebmPath);
+                win.webContents.send('export-progress', 100);
+                setTimeout(() => {
+                    win.webContents.send('export-done');
+                    dialog.showMessageBox(win, { type: 'info', title: 'Export Complete', message: 'Your video is ready and compatible with all players!' });
+                }, 500);
+            })
+            .on('error', (err, stdout, stderr) => {
+                console.error('FFmpeg Stderr:', stderr);
+                if (fs.existsSync(tempWebmPath)) fs.unlinkSync(tempWebmPath);
+                win.webContents.send('export-done');
+                dialog.showErrorBox('Export Failed', `FFmpeg Error: ${err.message}`);
+            })
+            .save(result.filePath);
+    });
 });
 
 app.whenReady().then(createWindow);
