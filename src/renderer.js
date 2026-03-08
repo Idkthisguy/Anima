@@ -152,18 +152,19 @@ function setTool(toolId, toolName) {
     currentTool = toolName;
 
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(toolId).classList.add('active');
+    const btn = document.getElementById(toolId);
+    if (btn) btn.classList.add('active');
 
     if (toolSettings[currentTool]) {
         brushSize.value = toolSettings[currentTool].size;
         opacitySlider.value = toolSettings[currentTool].opacity * 100;
-
         if (currentTool === 'brush') {
             colorPicker.value = toolSettings[currentTool].color;
         }
     }
 
     setupContext(drawingCtx);
+    setupContext(ctx);
 }
 
 brushSize.oninput = () => {
@@ -433,7 +434,14 @@ function handleTouch(e) {
     const touch = e.touches[0];
     const rect = canvas.getBoundingClientRect();
 
-    // Create a fake mouse event to reuse your existing logic
+    if (e.cancelable) e.preventDefault();
+
+    if (e.type === 'touchstart') {
+        onStartDrawing(e);
+    } else if (e.type === 'touchmove') {
+        onMoveDrawing(e);
+    }
+
     const mouseEvent = new MouseEvent(
         e.type === 'touchstart' ? 'mousedown' :
             e.type === 'touchmove' ? 'mousemove' : 'mouseup',
@@ -454,7 +462,14 @@ function handleTouch(e) {
 
 canvas.addEventListener('touchstart', handleTouch, { passive: false });
 canvas.addEventListener('touchmove', handleTouch, { passive: false });
-window.addEventListener('touchend', handleTouch, { passive: false });
+window.addEventListener('touchend', () => {
+    if (isDrawing) {
+        timeline.saveFrame(canvas);
+        updateSingleThumbnail(timeline.currentFrame);
+    }
+    isDrawing = false;
+    isPanning = false;
+}, { passive: false });
 
 stage.addEventListener('wheel', (e) => {
     if (e.ctrlKey) {
@@ -480,92 +495,29 @@ stage.addEventListener('mousedown', (e) => {
     }
 });
 
-canvas.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || timeline.isPlaying) return;
-    isDrawing = true;
-    timeline.recordState();
+canvas.addEventListener('mousedown', onStartDrawing);
+canvas.addEventListener('touchstart', (e) => {
+    if (e.cancelable) e.preventDefault();
+    onStartDrawing(e);
+}, { passive: false });
 
-    const pos = getCanvasCoords(e);
-    smoothedX = pos.x;
-    smoothedY = pos.y;
+window.addEventListener('mousemove', onMoveDrawing);
+window.addEventListener('touchmove', (e) => {
+    if (e.cancelable) e.preventDefault();
+    onMoveDrawing(e);
+}, { passive: false });
 
-    currentPath = [{ x: smoothedX, y: smoothedY }];
-
-    if (currentTool === 'bucket') {
-        floodFill(ctx, Math.floor(pos.x), Math.floor(pos.y), colorPicker.value);
-        isDrawing = false;
-    } else {
-        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-        setupContext(drawingCtx);
-    }
-});
-
-window.addEventListener('mousemove', (e) => {
-    if (isPanning) {
-        offsetX = e.clientX - startX;
-        offsetY = e.clientY - startY;
-        updateView();
-
-        const cursor = document.getElementById('cursor');
-        cursor.style.left = e.clientX + 'px';
-        cursor.style.top = e.clientY + 'px';
-        return;
-    }
-
-    const pos = getCanvasCoords(e);
-    const cursor = document.getElementById('cursor');
-    cursor.style.display = 'block';
-    cursor.style.left = e.clientX + 'px';
-    cursor.style.top = e.clientY + 'px';
-
-    updateCursor(e);
-
-    smoothedX += (pos.x - smoothedX) * (1 - smoothing);
-    smoothedY += (pos.y - smoothedY) * (1 - smoothing);
-
-    if (!isDrawing) return;
-
-    if (currentTool === 'brush') {
-        currentPath.push({ x: smoothedX, y: smoothedY });
-        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-        drawingCtx.beginPath();
-        drawingCtx.moveTo(currentPath[0].x, currentPath[0].y);
-        for (let i = 1; i < currentPath.length; i++) {
-            drawingCtx.lineTo(currentPath[i].x, currentPath[i].y);
-        }
-        drawingCtx.stroke();
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (timeline.frames[timeline.currentFrame]) {
-            ctx.putImageData(timeline.frames[timeline.currentFrame], 0, 0);
-        }
-        ctx.drawImage(drawingCanvas, 0, 0);
-    }
-    else if (currentTool === 'erase') {
-        ctx.beginPath();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.lineWidth = toolSettings.erase.size;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        const lastPoint = currentPath[currentPath.length - 1];
-        ctx.moveTo(lastPoint.x, lastPoint.y);
-        ctx.lineTo(smoothedX, smoothedY);
-        ctx.stroke();
-
-        currentPath.push({ x: smoothedX, y: smoothedY });
-    }
-});
-
-window.addEventListener('mouseup', () => {
+const endDrawing = () => {
     if (isDrawing) {
         timeline.saveFrame(canvas);
         updateSingleThumbnail(timeline.currentFrame);
     }
     isDrawing = false;
     isPanning = false;
-    stage.style.cursor = 'none';
-});
+};
+
+window.addEventListener('mouseup', endDrawing);
+window.addEventListener('touchend', endDrawing);
 
 document.getElementById('ctx-clear').onclick = () => {
     if (menuTargetFrame === null) return;
@@ -593,6 +545,8 @@ document.getElementById('ctx-delete').onclick = () => {
     timeline.gotoFrame(timeline.currentFrame, canvas);
     syncUI();
 };
+
+
 
 
 function floodFill(ctx, x, y, fillColor) {
@@ -731,9 +685,12 @@ function updateOnionSkin() {
 
 function getCanvasCoords(e) {
     const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
     return {
-        x: (e.clientX - rect.left) / scale,
-        y: (e.clientY - rect.top) / scale
+        x: (clientX - rect.left) / (rect.width / canvas.width),
+        y: (clientY - rect.top) / (rect.height / canvas.height)
     };
 }
 
@@ -791,6 +748,72 @@ function updateSingleThumbnail(index) {
         } else {
             target.classList.remove('has-data');
         }
+    }
+}
+
+function onStartDrawing(e) {
+    if (timeline.isPlaying) return;
+    // Check if it's a left click (0) or a touch event
+    if (e.type === 'mousedown' && e.button !== 0) return;
+
+    isDrawing = true;
+    timeline.recordState();
+
+    const pos = getCanvasCoords(e);
+    smoothedX = pos.x;
+    smoothedY = pos.y;
+    currentPath = [{ x: smoothedX, y: smoothedY }];
+
+    if (currentTool === 'bucket') {
+        floodFill(ctx, Math.floor(pos.x), Math.floor(pos.y), colorPicker.value);
+        isDrawing = false;
+    } else {
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        setupContext(drawingCtx);
+    }
+}
+
+function onMoveDrawing(e) {
+    if (isPanning) {
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        offsetX = clientX - startX;
+        offsetY = clientY - startY;
+        updateView();
+        return;
+    }
+
+    const pos = getCanvasCoords(e);
+
+    // Smooth the line
+    smoothedX += (pos.x - smoothedX) * (1 - smoothing);
+    smoothedY += (pos.y - smoothedY) * (1 - smoothing);
+
+    if (!isDrawing) return;
+
+    if (currentTool === 'brush') {
+        currentPath.push({ x: smoothedX, y: smoothedY });
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+        drawingCtx.beginPath();
+        drawingCtx.moveTo(currentPath[0].x, currentPath[0].y);
+        for (let i = 1; i < currentPath.length; i++) {
+            drawingCtx.lineTo(currentPath[i].x, currentPath[i].y);
+        }
+        drawingCtx.stroke();
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (timeline.frames[timeline.currentFrame]) {
+            ctx.putImageData(timeline.frames[timeline.currentFrame], 0, 0);
+        }
+        ctx.drawImage(drawingCanvas, 0, 0);
+    } else if (currentTool === 'erase') {
+        ctx.beginPath();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = toolSettings.erase.size;
+        ctx.moveTo(currentPath[currentPath.length - 1].x, currentPath[currentPath.length - 1].y);
+        ctx.lineTo(smoothedX, smoothedY);
+        ctx.stroke();
+        currentPath.push({ x: smoothedX, y: smoothedY });
     }
 }
 

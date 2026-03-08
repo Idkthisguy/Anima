@@ -305,58 +305,53 @@
 
         /* MOBILE OVERRIDE */
         @media (max-width: 768px) {
-            #header {
-                height: 50px;
-            }
-
-            /* Thicker header for thumbs */
-
-            #toolbar {
-                width: 100%;
-                height: 60px;
-                flex-direction: row;
-                /* Horizontal toolbar on mobile */
-                justify-content: space-around;
-                border-right: none;
-                border-top: 1px solid var(--border);
+            body {
                 position: fixed;
-                bottom: 150px;
-                /* Sits above timeline */
-                z-index: 100;
+                width: 100%;
             }
 
-            #workspace {
-                flex-direction: column;
-            }
-
-            #stage-container {
-                background-size: 25px 25px;
-                /* Smaller grid for mobile */
+            #header {
+                height: 44px;
+                padding-top: env(safe-area-inset-top);
             }
 
             #canvas-wrapper {
-                transform: scale(0.4);
-                /* Shrink canvas to fit phone screen */
+                transform: scale(0.18);
+                transform-origin: center;
+                touch-action: none;
+            }
+
+            #toolbar {
+                width: 100%;
+                height: 70px;
+                flex-direction: row;
+                justify-content: space-evenly;
+                position: fixed;
+                bottom: 120px;
+                /* Above timeline */
+                background: rgba(20, 20, 20, 0.95);
+                backdrop-filter: blur(10px);
+                padding: 0;
+                z-index: 1000;
             }
 
             .tool-btn {
-                width: 50px;
-                height: 50px;
-                font-size: 24px;
-                /* Chunky buttons for fingers */
+                width: 55px;
+                height: 55px;
+                font-size: 28px;
             }
-
-            .tool-settings {
-                display: none;
-            }
-
-            /* Hide sliders on mobile to save space */
 
             #timeline-panel {
-                height: 150px;
+                height: 120px;
                 position: fixed;
                 bottom: 0;
                 width: 100%;
+                padding-bottom: env(safe-area-inset-bottom);
+                z-index: 1001;
+            }
+
+            #cursor {
+                display: none !important;
             }
         }
     </style>

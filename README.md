@@ -23,6 +23,18 @@ Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar
 | **Playback** | `Spacebar` (Play/Pause) |
 | **Canvas** | `Ctrl + Scroll` (Zoom), `Mid-Mouse` (Pan), `Ctrl + 0` (Reset) |
 
+## Contributors
+
+### Idkthisguy 
+- Creator
+- Code-writer
+- Desktop Tester
+
+### Ezure
+- Main Tester
+- Mobile tester
+- Desktop tester
+
 ## Roadmap
 - [x] **FFMPEG Export:** Export to MP4, WebM, and GIF.
 - [ ] **Vector Engine:** Moving from pixels to paths for infinite scaling.
