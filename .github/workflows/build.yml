@@ -38,18 +38,22 @@ jobs:
         with:
           node-version: 22
           
-      - run: npm install
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Prepare Web Assets
+        run: |
+          mkdir -p www
+          cp index.html www/ || true
+          cp -r src www/ || true
+          cp -r css www/ || true
+          cp -r js www/ || true
 
       - name: Rebuild iOS Platform
         run: |
           rm -rf ios
           npx cap add ios
           npx cap sync ios
-
-      - name: Install Pods
-        run: |
-          cd ios/App
-          pod install
 
       - name: Build iOS (No Signing)
         run: |
