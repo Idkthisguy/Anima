@@ -1,26 +1,6 @@
 import { Timeline } from "./timeline.js";
-let ipcRenderer = null;
-let fs = null;
-let Media = null;
-
-const isElectron = typeof window !== 'undefined' && window.process && window.process.type;
-
-if (isElectron) {
-    document.body.classList.add('platform-desktop');
-} else {
-    document.body.classList.add('platform-mobile');
-}
-
-async function loadPlatformModules() {
-    if (isElectron) {
-        ipcRenderer = require('electron').ipcRenderer;
-        fs = require('fs');
-    } else {
-        const module = await import('@capacitor-community/media');
-        Media = module.Media;
-    }
-}
-loadPlatformModules();
+let MediaModule;
+import('@capacitor-community/media').then(m => MediaModule = m.Media);
 
 window.focus();
 
@@ -30,7 +10,6 @@ const wrapper = document.getElementById('canvas-wrapper');
 const stage = document.getElementById('stage-container');
 const timeline = new Timeline(60);
 
-const bucketBtn = document.getElementById('bucketTool');
 const colorPicker = document.getElementById('colorPicker');
 const brushSize = document.getElementById('brushSize');
 const frameSlider = document.getElementById('frameSlider');
@@ -121,6 +100,11 @@ function syncUI() {
     updateOnionSkin();
 }
 
+const exportTmp = document.createElement('canvas');
+exportTmp.width = canvas.width;
+exportTmp.height = canvas.height;
+const exportTmpCtx = exportTmp.getContext('2d');
+
 function getProjectData() {
     return JSON.stringify({
         appName: "Anima",
@@ -129,11 +113,9 @@ function getProjectData() {
         maxFrames: timeline.maxFrames,
         frames: timeline.frames.map(imgData => {
             if (!imgData) return null;
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
-            return tempCanvas.toDataURL();
+            exportTmpCtx.clearRect(0, 0, canvas.width, canvas.height);
+            exportTmpCtx.putImageData(imgData, 0, 0);
+            return exportTmp.toDataURL('image/webp', 0.5);
         })
     });
 }
@@ -451,8 +433,11 @@ playBtn.onclick = () => {
 
 const endDrawing = () => {
     if (isDrawing) {
+        if (currentTool === 'brush') ctx.drawImage(drawingCanvas, 0, 0);
+
         timeline.saveFrame(canvas);
         updateSingleThumbnail(timeline.currentFrame);
+        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height); // Clear the temp
     }
     isDrawing = false;
     isPanning = false;
@@ -860,6 +845,7 @@ function onMoveDrawing(e) {
 
     if (currentTool === 'brush') {
         currentPath.push({ x: smoothedX, y: smoothedY });
+
         drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
         drawingCtx.beginPath();
         drawingCtx.moveTo(currentPath[0].x, currentPath[0].y);
@@ -867,11 +853,6 @@ function onMoveDrawing(e) {
             drawingCtx.lineTo(currentPath[i].x, currentPath[i].y);
         }
         drawingCtx.stroke();
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (timeline.frames[timeline.currentFrame]) {
-            ctx.putImageData(timeline.frames[timeline.currentFrame], 0, 0);
-        }
-        ctx.drawImage(drawingCanvas, 0, 0);
     } else if (currentTool === 'erase') {
         ctx.beginPath();
         ctx.globalCompositeOperation = 'destination-out';
