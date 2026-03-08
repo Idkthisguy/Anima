@@ -88,12 +88,6 @@ function init() {
     syncUI();
 }
 
-document.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 1) {
-        e.preventDefault();
-    }
-}, { passive: false });
-
 function syncUI() {
     frameSlider.value = timeline.currentFrame;
     frameCounter.innerText = `Frame: ${timeline.currentFrame + 1}`;
@@ -493,14 +487,14 @@ stage.addEventListener('mousedown', (e) => {
     }
 });
 
-canvas.addEventListener('mousedown', onStartDrawing);
-canvas.addEventListener('touchstart', (e) => {
+drawingCanvas.addEventListener('mousedown', onStartDrawing);
+drawingCanvas.addEventListener('touchstart', (e) => {
     if (e.cancelable) e.preventDefault();
     onStartDrawing(e);
 }, { passive: false });
 
 window.addEventListener('mousemove', onMoveDrawing);
-canvas.addEventListener('touchmove', (e) => {
+drawingCanvas.addEventListener('touchmove', (e) => {
     if (e.cancelable) e.preventDefault();
     onMoveDrawing(e);
 }, { passive: false })
@@ -781,7 +775,7 @@ function getTouchMid(t1, t2) {
 function onStartDrawing(e) {
     if (timeline.isPlaying) return;
 
-    if (e.touches && e.touches.length === 2) {
+    if (e.touches && e.touches.length >= 2) {
         isDrawing = false;
         isPinching = true;
         initialPinchDistance = getTouchDist(e.touches[0], e.touches[1]);
