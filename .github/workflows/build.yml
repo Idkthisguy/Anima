@@ -39,11 +39,13 @@ jobs:
           node-version: 22
           
       - run: npm install
-      
-      - run: npx cap add ios || true 
-      
-      - run: npx cap sync ios
-      
+
+      - name: Rebuild iOS Platform
+        run: |
+          rm -rf ios
+          npx cap add ios
+          npx cap sync ios
+
       - name: Install Pods
         run: |
           cd ios/App
