@@ -26,14 +26,22 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          
       - run: npm install
+      
+      - run: npx cap add ios || true 
       - run: npx cap sync ios
+      
       - name: Build iOS (No Signing)
         run: |
-          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -sdk iphoneos CODE_SIGNING_ALLOWED=NO
+          cd ios/App/App # Moving into the actual project folder
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -sdk iphoneos CODE_SIGNING_ALLOWED=NO
+          
       - name: Upload iOS Project
         uses: actions/upload-artifact@v4
         with:
