@@ -3,7 +3,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale:1.0, maximum-scale:1.0, user-scalable:no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
     <title>Anima Editor</title>
     <style>
         :root {
@@ -19,6 +22,11 @@
             --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
 
+        #mainCanvas {
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
             margin: 0;
             background: var(--bg);
@@ -29,6 +37,8 @@
             height: 100vh;
             overflow: hidden;
             user-select: none;
+            touch-action: none;
+            overscroll-behavior: none;
         }
 
         /* Scrollbars */
@@ -158,6 +168,7 @@
             padding: 2px 4px;
             font-family: monospace;
             outline: none;
+            font-size: 16px;
         }
 
         #colorPicker {
@@ -245,7 +256,7 @@
             padding: 5px;
             background: #0d0d0d;
             border-radius: var(--radius);
-            height: 80px;
+            height: 90px;
             border: 1px solid var(--border);
         }
 
@@ -305,6 +316,11 @@
 
         /* MOBILE OVERRIDE */
         @media (max-width: 768px) {
+            input[type="number"] {
+                transform: scale(0.8);
+                transform-origin: center;
+            }
+
             body {
                 position: fixed;
                 width: 100%;
@@ -333,6 +349,8 @@
                 backdrop-filter: blur(10px);
                 padding: 0;
                 z-index: 1000;
+                justify-content: flex-start;
+                overflow-y: auto;
             }
 
             .tool-btn {
@@ -342,11 +360,11 @@
             }
 
             #timeline-panel {
-                height: 120px;
+                height: 140px;
                 position: fixed;
                 bottom: 0;
                 width: 100%;
-                padding-bottom: env(safe-area-inset-bottom);
+                padding-bottom: calc(12px + env(safe-area-inset-bottom));
                 z-index: 1001;
             }
 

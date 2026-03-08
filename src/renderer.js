@@ -152,19 +152,18 @@ function setTool(toolId, toolName) {
     currentTool = toolName;
 
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById(toolId);
-    if (btn) btn.classList.add('active');
+    document.getElementById(toolId).classList.add('active');
 
     if (toolSettings[currentTool]) {
         brushSize.value = toolSettings[currentTool].size;
         opacitySlider.value = toolSettings[currentTool].opacity * 100;
+
         if (currentTool === 'brush') {
             colorPicker.value = toolSettings[currentTool].color;
         }
     }
 
     setupContext(drawingCtx);
-    setupContext(ctx);
 }
 
 brushSize.oninput = () => {
@@ -428,40 +427,16 @@ playBtn.onclick = () => {
     }
 };
 
-function handleTouch(e) {
-    if (timeline.isPlaying) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-
-    if (e.cancelable) e.preventDefault();
-
-    if (e.type === 'touchstart') {
-        onStartDrawing(e);
-    } else if (e.type === 'touchmove') {
-        onMoveDrawing(e);
+const endDrawing = () => {
+    if (isDrawing) {
+        timeline.saveFrame(canvas);
+        updateSingleThumbnail(timeline.currentFrame);
     }
+    isDrawing = false;
+    isPanning = false;
+    stage.style.cursor = 'default';
+};
 
-    const mouseEvent = new MouseEvent(
-        e.type === 'touchstart' ? 'mousedown' :
-            e.type === 'touchmove' ? 'mousemove' : 'mouseup',
-        {
-            clientX: touch ? touch.clientX : 0,
-            clientY: touch ? touch.clientY : 0,
-            button: 0
-        }
-    );
-
-    // Dispatch to the element that needs it
-    if (e.type === 'touchstart' || e.type === 'touchmove') {
-        canvas.dispatchEvent(mouseEvent);
-    } else {
-        window.dispatchEvent(mouseEvent);
-    }
-}
-
-canvas.addEventListener('touchstart', handleTouch, { passive: false });
-canvas.addEventListener('touchmove', handleTouch, { passive: false });
 window.addEventListener('touchend', () => {
     if (isDrawing) {
         timeline.saveFrame(canvas);
@@ -502,22 +477,20 @@ canvas.addEventListener('touchstart', (e) => {
 }, { passive: false });
 
 window.addEventListener('mousemove', onMoveDrawing);
-window.addEventListener('touchmove', (e) => {
+canvas.addEventListener('touchmove', (e) => {
     if (e.cancelable) e.preventDefault();
     onMoveDrawing(e);
-}, { passive: false });
+}, { passive: false })
 
-const endDrawing = () => {
+window.addEventListener('mouseup', endDrawing);
+window.addEventListener('touchend', (e) => {
     if (isDrawing) {
         timeline.saveFrame(canvas);
         updateSingleThumbnail(timeline.currentFrame);
     }
     isDrawing = false;
     isPanning = false;
-};
-
-window.addEventListener('mouseup', endDrawing);
-window.addEventListener('touchend', endDrawing);
+}, { passive: false });
 
 document.getElementById('ctx-clear').onclick = () => {
     if (menuTargetFrame === null) return;
@@ -688,9 +661,12 @@ function getCanvasCoords(e) {
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
     return {
-        x: (clientX - rect.left) / (rect.width / canvas.width),
-        y: (clientY - rect.top) / (rect.height / canvas.height)
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
     };
 }
 
@@ -774,22 +750,33 @@ function onStartDrawing(e) {
 }
 
 function onMoveDrawing(e) {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
     if (isPanning) {
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         offsetX = clientX - startX;
         offsetY = clientY - startY;
         updateView();
         return;
     }
 
-    const pos = getCanvasCoords(e);
-
-    // Smooth the line
-    smoothedX += (pos.x - smoothedX) * (1 - smoothing);
-    smoothedY += (pos.y - smoothedY) * (1 - smoothing);
+    const cursor = document.getElementById('cursor');
+    if (cursor) {
+        if (e.touches) {
+            cursor.style.display = 'none';
+        } else {
+            cursor.style.display = 'block';
+            cursor.style.left = clientX + 'px';
+            cursor.style.top = clientY + 'px';
+            updateCursor(e);
+        }
+    }
 
     if (!isDrawing) return;
+
+    const pos = getCanvasCoords(e);
+    smoothedX += (pos.x - smoothedX) * (1 - smoothing);
+    smoothedY += (pos.y - smoothedY) * (1 - smoothing);
 
     if (currentTool === 'brush') {
         currentPath.push({ x: smoothedX, y: smoothedY });
@@ -810,13 +797,13 @@ function onMoveDrawing(e) {
         ctx.beginPath();
         ctx.globalCompositeOperation = 'destination-out';
         ctx.lineWidth = toolSettings.erase.size;
-        ctx.moveTo(currentPath[currentPath.length - 1].x, currentPath[currentPath.length - 1].y);
+        const lastPos = currentPath[currentPath.length - 1] || pos;
+        ctx.moveTo(lastPos.x, lastPos.y);
         ctx.lineTo(smoothedX, smoothedY);
         ctx.stroke();
         currentPath.push({ x: smoothedX, y: smoothedY });
     }
 }
-
 async function handleExport(format) {
     const exportOverlay = document.getElementById('export-overlay');
     const exportFill = document.getElementById('export-bar-fill');
@@ -840,7 +827,6 @@ async function handleExport(format) {
             const arrayBuffer = await blob.arrayBuffer();
             ipcRenderer.send('save-exported-file', { BufferData: arrayBuffer, requestedFormat: format, fps: parseInt(fpsInput.value) || 12 });
         } else {
-            // MOBILE: Save to Gallery
             const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = async () => {
