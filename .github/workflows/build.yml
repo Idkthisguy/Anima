@@ -39,12 +39,13 @@ jobs:
       - run: npm install
       - run: npx cap add ios || true 
       - run: npx cap sync ios
+    
+      - name: Install CocoaPods
+        run: |
+          cd ios/App
+          pod install
+
       - name: Build iOS (No Signing)
         working-directory: ios/App
         run: |
           xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -sdk iphoneos CODE_SIGNING_ALLOWED=NO
-      - name: Upload iOS Project
-        uses: actions/upload-artifact@v4
-        with:
-          name: anima-ios-project
-          path: ios/App
