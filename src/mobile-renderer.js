@@ -2,6 +2,8 @@ import { Timeline } from "./timeline.js";
 let MediaModule;
 import('@capacitor-community/media').then(m => MediaModule = m.Media);
 
+const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+
 window.focus();
 
 const canvas = document.getElementById('mainCanvas');
@@ -25,7 +27,7 @@ const onionCtx = onionCanvas.getContext('2d');
 const tempOnionCanvas = document.createElement('canvas');
 const tempOnionCtx = tempOnionCanvas.getContext('2d');
 
-const drawingCanvas = document.createElement('canvas');
+const drawingCanvas = document.getElementById('drawingCanvas');
 drawingCanvas.width = canvas.width;
 drawingCanvas.height = canvas.height;
 const drawingCtx = drawingCanvas.getContext('2d');
