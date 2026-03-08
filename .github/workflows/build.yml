@@ -32,43 +32,35 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-          
-      - name: Install Dependencies
-        run: npm install
+      - run: npm install
+      - run: npx cap add ios || true 
+      - run: npx cap sync ios
 
-      - name: Prepare Web Assets
+      - name: Build and Package IPA
         run: |
-          mkdir -p www
-          # Added a fallback to copy whatever you have to the 'www' folder
-          cp index.html www/ || true
-          cp -r src/. www/ || true
-          cp -r css/. www/ || true
-          cp -r js/. www/ || true
-
-      - name: Rebuild iOS Platform
-        run: |
-          rm -rf ios
-          npx cap add ios
-          npx cap sync ios
-
-      - name: Build iOS (No Signing)
-        run: |
+          # 1. Build the actual app binary
           xcodebuild -project ios/App/App.xcodeproj \
                      -scheme App \
                      -configuration Debug \
                      -sdk iphoneos \
+                     -derivedDataPath build \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      ENTITLEMENTS_REQUIRED=NO \
                      clean build
+
+          # 2. Create the Payload folder structure for AltStore
+          mkdir -p Payload
+          cp -r build/Build/Products/Debug-iphoneos/App.app Payload/
           
-      - name: Upload iOS Project
+          # 3. Zip it and rename to .ipa
+          zip -r Anima.ipa Payload
+          
+      - name: Upload IPA for Sideloading
         uses: actions/upload-artifact@v4
         with:
-          name: anima-ios-project
-          path: ios/App
+          name: anima-ios-ipa
+          path: Anima.ipa
