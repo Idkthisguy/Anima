@@ -83,6 +83,7 @@
             display: flex;
             flex: 1;
             overflow: hidden;
+            pointer-events: none;
         }
 
         #toolbar {
@@ -187,12 +188,14 @@
             align-items: center;
             justify-content: center;
             position: relative;
+            pointer-events: auto;
         }
 
         #canvas-wrapper {
             position: absolute;
             box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
             background: white;
+            pointer-events: none;
         }
 
         #timeline-panel {
@@ -383,10 +386,10 @@
             }
 
             body.platform-mobile #timeline-panel {
-                margin: 10px;
-                border-radius: 15px;
-                border: 1px solid var(--border);
-                box-shadow: var(--shadow);
+                width: 95%;
+                height: 100px;
+                background: rgba(10, 10, 10, 0.95);
+                border: 1px solid var(--accent);
             }
         }
 
@@ -429,35 +432,23 @@
         }
 
         body.platform-mobile #toolbar {
-            position: absolute;
-            left: calc(15px + env(safe-area-inset-left));
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 1000;
-            height: auto;
-            background: rgba(20, 20, 20, 0.8);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 30px;
-            padding: 15px 8px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            left: calc(10px + env(safe-area-inset-left));
+            top: auto;
+            bottom: calc(130px + env(safe-area-inset-bottom));
+            transform: none;
+            flex-direction: row;
+            padding: 8px;
+            gap: 10px;
+            pointer-events: auto;
         }
 
         body.platform-mobile .tool-settings {
-            position: absolute;
-            right: calc(15px + env(safe-area-inset-right));
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 1000;
-            background: rgba(20, 20, 20, 0.8);
-            backdrop-filter: blur(15px);
-            border-radius: 30px;
-            padding: 20px 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
+            right: calc(10px + env(safe-area-inset-right));
+            top: auto;
+            bottom: calc(130px + env(safe-area-inset-bottom));
+            transform: none;
+            padding: 10px;
+            pointer-events: auto;
         }
 
         body.platform-mobile .tool-settings input[type="range"] {
