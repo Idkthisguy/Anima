@@ -3,6 +3,7 @@ let MediaModule;
 import('@capacitor-community/media').then(m => MediaModule = m.Media);
 
 const isElectron = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+const { ipcRenderer } = (isElectron && window.electron) ? window.electron : { ipcRenderer: null };
 
 window.focus();
 
@@ -30,6 +31,7 @@ const tempOnionCtx = tempOnionCanvas.getContext('2d');
 const drawingCanvas = document.getElementById('drawingCanvas');
 drawingCanvas.width = canvas.width;
 drawingCanvas.height = canvas.height;
+drawingCanvas.style.touchAction = 'none';
 const drawingCtx = drawingCanvas.getContext('2d');
 
 const frameCtxMenu = document.getElementById('frame-context-menu');
@@ -679,12 +681,12 @@ function updateOnionSkin() {
 }
 
 function getCanvasCoords(e) {
-    const rect = canvas.getBoundingClientRect();
+    const rect = drawingCanvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-    const x = (clientX - rect.left) * (canvas.width / rect.width);
-    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    const x = (clientX - rect.left) * (drawingCanvas.width / rect.width);
+    const y = (clientY - rect.top) * (drawingCanvas.height / rect.height);
 
     return { x, y };
 }
