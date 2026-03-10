@@ -95,6 +95,7 @@
             padding: 12px 0;
             gap: 8px;
             border-right: 1px solid var(--border);
+            pointer-events: auto;
         }
 
         .tool-btn {
@@ -557,11 +558,10 @@
             <div id="canvas-wrapper">
                 <canvas id="onionCanvas" width="1920" height="1080"
                     style="position: absolute; pointer-events: none; z-index: 1; opacity: 0.4;"></canvas>
-                <canvas id="mainCanvas" width="1920" height="1080"
-                    style="position: relative; z-index: 2; background: transparent;"></canvas>
 
-                <canvas id="drawingCanvas" width="1920" height="1080"
-                    style="position: absolute; z-index: 3; background: transparent;"></canvas>
+                <canvas id="mainCanvas" width="1920" height="1080"
+                    style="position: relative; z-index: 2; background: transparent; pointer-events: auto;"></canvas>
+
             </div>
         </div>
     </div>
@@ -629,7 +629,9 @@
             style="font-size: 10px; color: var(--text-dim); margin-top: 10px; font-family: monospace;">0%</div>
     </div>
 
-    <script type="module">
+    <script type="module" src="desktop-renderer.js"></script>
+
+    <!-- <script type="module">
         const isCapacitor = !!window.Capacitor;
         const isMobile = isCapacitor || ('ontouchstart' in window);
 
@@ -646,6 +648,6 @@
         }
 
         document.body.appendChild(script);
-    </script>
+    </script> -->
 
 </html>

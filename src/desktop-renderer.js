@@ -1,5 +1,11 @@
 import { Timeline } from "./timeline.js";
-const { ipcRenderer } = require('electron');
+let ipcRenderer;
+try {
+    const electron = require('electron');
+    ipcRenderer = electron.ipcRenderer;
+} catch (e) {
+    console.warn("Not running in Electron. IPC disabled.");
+}
 
 const { remote } = require('electron');
 const dialog = require('electron').remote ? require('electron').remote.dialog : null;

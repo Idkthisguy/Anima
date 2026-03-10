@@ -1,4 +1,4 @@
-import { Timeline } from "./timeline.js";
+import { Timeline } from "../../src/timeline.js";
 let MediaModule;
 import('@capacitor-community/media').then(m => MediaModule = m.Media);
 
