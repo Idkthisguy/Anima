@@ -56,6 +56,7 @@ durationInput.onchange = () => {
     syncUI();
 };
 
+
 let currentPath = [];
 
 let smoothing = 0.5;
@@ -71,6 +72,8 @@ let startX, startY;
 let animationId = null;
 
 let currentFilePath = null;
+
+let brushPreviewTimeout = null;
 
 const toolSettings = {
     brush: { size: 5, opacity: 1, color: '#000000' },
@@ -113,6 +116,17 @@ function setTool(toolId, toolName) {
 
 brushSize.oninput = () => {
     if (toolSettings[currentTool]) toolSettings[currentTool].size = brushSize.value;
+
+    const brushPreview = document.getElementById('brush-preview');
+    if (brushPreview) {
+        brushPreview.style.opacity = '1';
+        updateCursor();
+
+        clearTimeout(brushPreviewTimeout);
+        brushPreviewTimeout = setTimeout(() => {
+            if (!isDrawing) brushPreview.style.opacity = '0';
+        }, 1000);
+    }
 };
 
 opacitySlider.oninput = () => {
@@ -428,6 +442,8 @@ stage.addEventListener('mousedown', (e) => {
 });
 
 canvas.addEventListener('mousedown', (e) => {
+    document.getElementById('brush-preview').style.opacity = '1';
+
     if (e.button !== 0 || timeline.isPlaying) return;
     isDrawing = true;
     timeline.recordState();
@@ -448,23 +464,15 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 window.addEventListener('mousemove', (e) => {
+    updateCursor(e);
     if (isPanning) {
         offsetX = e.clientX - startX;
         offsetY = e.clientY - startY;
         updateView();
-
-        const cursor = document.getElementById('cursor');
-        cursor.style.left = e.clientX + 'px';
-        cursor.style.top = e.clientY + 'px';
         return;
     }
 
     const pos = getCanvasCoords(e);
-    const cursor = document.getElementById('cursor');
-    cursor.style.display = 'block';
-    cursor.style.left = e.clientX + 'px';
-    cursor.style.top = e.clientY + 'px';
-
     updateCursor(e);
 
     smoothedX += (pos.x - smoothedX) * (1 - smoothing);
@@ -502,6 +510,8 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mouseup', () => {
+    document.getElementById('brush-preview').style.opacity = '0';
+
     if (isDrawing) {
         timeline.saveFrame(canvas);
         updateSingleThumbnail(timeline.currentFrame);
@@ -622,19 +632,28 @@ function setPixelColor(data, x, y, width, rgb) {
 }
 
 function updateCursor(e) {
-    const cursor = document.getElementById('cursor');
-    if (!cursor) return;
+    const crosshair = document.getElementById('crosshair');
+    const brushPreview = document.getElementById('brush-preview');
+    if (!crosshair || !brushPreview) return;
+
+    // Toggle crosshair visibility based on drawing state
+    crosshair.style.opacity = isDrawing ? '0' : '1';
 
     if (e) {
-        cursor.style.display = 'block';
-        cursor.style.left = e.clientX + 'px';
-        cursor.style.top = e.clientY + 'px';
+        const x = e.clientX + 'px';
+        const y = e.clientY + 'px';
+
+        crosshair.style.left = x;
+        crosshair.style.top = y;
+
+        brushPreview.style.left = x;
+        brushPreview.style.top = y;
     }
 
     const size = toolSettings[currentTool]?.size || 5;
     const displaySize = size * scale;
-    cursor.style.width = displaySize + 'px';
-    cursor.style.height = displaySize + 'px';
+    brushPreview.style.width = displaySize + 'px';
+    brushPreview.style.height = displaySize + 'px';
 }
 
 function hexToRgb(hex) {

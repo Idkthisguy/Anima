@@ -512,11 +512,55 @@
             left: calc(10px + env(safe-area-inset-left));
             padding: 10px 5px;
         }
+
+        #crosshair {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 10001;
+            mix-blend-mode: difference;
+            transform: translate(-50%, -50%);
+        }
+
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: white;
+        }
+
+        #crosshair::before {
+            top: 9px;
+            left: 0;
+            width: 20px;
+            height: 2px;
+        }
+
+        #crosshair::after {
+            left: 9px;
+            top: 0;
+            width: 2px;
+            height: 20px;
+        }
+
+        #brush-preview {
+            position: fixed;
+            border: 1px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            mix-blend-mode: difference;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
     </style>
 </head>
 
 <body>
-    <div id="cursor"></div>
+    <div id="crosshair"></div>
+    <div id="brush-preview"></div>
 
     <div id="header">
         <span style="color: var(--accent)">ANIMA</span>
