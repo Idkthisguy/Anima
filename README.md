@@ -4,7 +4,7 @@
 Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
 ---
 
-## If you know how to make a mobile port for this, then PLEASE fork this repo and make a pull request if it's finished. There will be a HIGH chance that I will accept the request after reviewing it (I'm kinda desperate because I don't know how to make a mobile port and I know this is good on mobile). I will credit you and give you contribution
+## I'm currently focused on desktop rn, so if you know how to make a mobile port for this, then PLEASE fork this repo and make a pull request if it's finished. There will be a HIGH chance that I will accept the request after reviewing it. I will credit you and give you contribution
 
 ---
 
