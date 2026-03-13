@@ -18,7 +18,7 @@ Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar
 
 ## Warning
 
-### ARM64 is an experimental version, it has never been tested! So USE IT AT YOUR OWN RISK and report bugs in [issues](https://github.com/Idkthisguy/Anima/issues)
+### ARM64 is an experimental version, it has never been tested! So USE IT AT YOUR OWN RISK and please report bugs in [issues](https://github.com/Idkthisguy/Anima/issues)
 
 ---
 
