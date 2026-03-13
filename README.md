@@ -1,10 +1,24 @@
-# 🎨 Anima (v1.0.0-beta)
+# 🎨 Anima (v1.0.0)
 **A lightweight, 2D animation engine.**
 
 Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
 ---
 
-## I'm currently focused on desktop rn, so if you know how to make a mobile port for this, then PLEASE fork this repo and make a pull request if it's finished. There will be a HIGH chance that I will accept the request after reviewing it. I will credit you and give you contribution
+## Notice
+
+### Mobile Contributors Wanted!
+
+- I'm currently focused on desktop rn, so if you know how to make a mobile port for this, then PLEASE fork this repo and make a pull request if it's finished. There will be a HIGH chance that I will accept the request after reviewing it. I will credit you and give you contribution
+
+### Linux version coming soon
+
+- I will be making a Linux version for Anima, for all the Linux users out there.
+
+---
+
+## Warning
+
+### ARM64 is an experimental version, it has never been tested! So USE IT AT YOUR OWN RISK and report bugs in [issues](https://github.com/Idkthisguy/Anima/issues)
 
 ---
 
