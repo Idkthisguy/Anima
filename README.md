@@ -11,7 +11,7 @@ Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar
 * **Portable Projects:** Save your entire workflow into a single `.anima` file.
 
 ## Getting Started
-1. **Download:** Download `Anima.Editor.exe` from the [Releases](https://github.com/Idkthisguy/anima/releases) section.
+1. **Download:** Download `Anima.Setup.1.0.0.exe` from the [Releases](https://github.com/Idkthisguy/anima/releases) section.
 2. **Launch:** Run the executable. No installation required.
 3. **Animate:** Draw, hit `F` for a new frame, and hit `Space` to see it move.
     
