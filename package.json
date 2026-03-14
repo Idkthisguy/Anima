@@ -4,7 +4,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "dev": "cross-env NODE_ENV=development electron ."
   },
   "build": {
     "appId": "com.idkthisguy.anima",
