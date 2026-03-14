@@ -77,6 +77,7 @@ function createWindow() {
             label: 'Edit',
             submenu: [
                 { label: 'Undo', accelerator: 'CmdOrCtrl+Z', click: () => win.webContents.send('menu-undo') },
+                { label: 'Redo', accelerator: 'CmdOrCtrl+Y', click: () => win.webContents.send('menu-redo') },
                 { type: 'separator' },
                 { label: 'Copy Frame', accelerator: 'CmdOrCtrl+C', click: () => win.webContents.send('menu-copy') },
                 { label: 'Paste Frame', accelerator: 'CmdOrCtrl+V', click: () => win.webContents.send('menu-paste') },
@@ -93,6 +94,27 @@ function createWindow() {
             ]
         }
     ];
+
+    win.webContents.on('render-process-gone', (event, details) => {
+        const reason = details.reason;
+        console.error(`Renderer process gone: ${reason}`);
+
+        dialog.showErrorBox(
+            'Anima System Failure',
+            `The drawing engine crashed (${reason}).\n\nIf this keeps happening, please check your desktop for a crash log or report this on GitHub.`
+        );
+    });
+
+    win.on('unresponsive', () => {
+        dialog.showMessageBox(win, {
+            type: 'warning',
+            title: 'Anima is Frozen',
+            message: 'Anima isn\'t responding. Do you want to wait or restart?',
+            buttons: ['Wait', 'Restart']
+        }).then(({ response }) => {
+            if (response === 1) win.reload();
+        });
+    });
 
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }

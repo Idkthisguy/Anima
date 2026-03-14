@@ -4,6 +4,7 @@ export class Timeline {
         this.maxFrames = maxFrames;
         this.frames = new Array(maxFrames + 1).fill(null);
         this.undoStack = [];
+        this.redoStack = [];
         this.clipboard = null;
         this.isPlaying = false;
     }
@@ -31,15 +32,45 @@ export class Timeline {
         };
         this.undoStack.push(state);
         if (this.undoStack.length > 50) this.undoStack.shift();
+
+        this.redoStack = [];
     }
 
     undo(canvas) {
         if (this.undoStack.length === 0) return;
+
         const lastAction = this.undoStack.pop();
-        this.frames[lastAction.index] = lastAction.data;
-        this.gotoFrame(lastAction.index, canvas);
+        const targetFrameIndex = lastAction.index;
+
+        const frameData = this.frames[targetFrameIndex];
+        const stateForRedo = {
+            index: targetFrameIndex,
+            data: frameData ? new ImageData(new Uint8ClampedArray(frameData.data), frameData.width, frameData.height) : null
+        };
+        this.redoStack.push(stateForRedo);
+
+        this.frames[targetFrameIndex] = lastAction.data;
+
+        this.gotoFrame(targetFrameIndex, canvas);
     }
 
+    redo(canvas) {
+        if (this.redoStack.length === 0) return;
+
+        const nextAction = this.redoStack.pop();
+        const targetFrameIndex = nextAction.index;
+
+        const frameData = this.frames[targetFrameIndex];
+        const stateForUndo = {
+            index: targetFrameIndex,
+            data: frameData ? new ImageData(new Uint8ClampedArray(frameData.data), frameData.width, frameData.height) : null
+        };
+        this.undoStack.push(stateForUndo);
+
+        this.frames[targetFrameIndex] = nextAction.data;
+
+        this.gotoFrame(targetFrameIndex, canvas);
+    }
     saveFrame(canvas) {
         this.frames[this.currentFrame] = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
     }

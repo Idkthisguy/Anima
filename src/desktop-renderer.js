@@ -10,9 +10,56 @@ try {
 const { remote } = require('electron');
 const dialog = require('electron').remote ? require('electron').remote.dialog : null;
 
+const path = require('path');
+const { shell } = require('electron');
 const fs = require('fs');
 
 window.focus();
+
+// --- CRASH LOG SYSTEM ---
+function handleCrash(message, source, lineno, colno, error) {
+    const logPath = path.join(require('os').homedir(), 'Desktop', 'anima-crash-log.txt');
+    const report = `--- ANIMA CRASH REPORT (${new Date().toLocaleString()}) ---
+Look, I'm building this solo and I clearly missed something. Sorry about that!
+
+ERROR: ${message}
+FILE: ${source}
+LINE: ${lineno}:${colno}
+STACK: ${error ? error.stack : 'N/A'}
+
+PLATFORM: ${process.platform}
+------------------------------------------`;
+
+    try {
+        fs.writeFileSync(logPath, report);
+        showCrashPopup(logPath);
+    } catch (e) { console.error(e); }
+}
+
+function showCrashPopup(logPath) {
+    document.body.innerHTML = '';
+    document.body.style.background = '#111';
+
+    const overlay = document.createElement('div');
+    overlay.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);color:white;z-index:10000;display:flex;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;padding:20px;";
+    overlay.innerHTML = `
+        <div style="max-width:500px; padding:30px; border: 2px solid #ff4444; border-radius:10px; background:#111;">
+            <h1 style="color:#ff4444;">Ouch. Anima Crashed.</h1>
+            <p>I'm really sorry! I've saved a <b>crash log</b> to your Desktop.</p>
+            <p style="color:#aaa; font-size:0.9em;">Path: ${logPath}</p>
+            <p>If you post this log as an issue on GitHub, I can fix this for you and everyone else.</p>
+            <div style="margin-top:20px;">
+                <button id="openGit" style="background:#2ea44f; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; margin-right:10px;">Post to GitHub</button>
+                <button onclick="location.reload()" style="background:#444; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Restart App</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    document.getElementById('openGit').onclick = () => shell.openExternal('https://github.com/YOUR_USERNAME/YOUR_REPO/issues');
+}
+
+window.onerror = (m, s, l, c, e) => { handleCrash(m, s, l, c, e); return false; };
+window.onunhandledrejection = (e) => { handleCrash(e.reason, 'Async/Promise', 0, 0, e.reason); };
+// --- END CRASH SYSTEM ---
 
 const canvas = document.getElementById('mainCanvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -30,6 +77,20 @@ const fpsInput = document.getElementById('fpsInput');
 const frameCounter = document.getElementById('frameCounter');
 const loopToggle = document.getElementById('loopToggle');
 
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+undoBtn.addEventListener('click', () => {
+    timeline.undo(canvas);
+    syncUI();
+});
+
+redoBtn.addEventListener('click', () => {
+    timeline.redo(canvas);
+    syncUI();
+});
+
+
 const onionCanvas = document.getElementById('onionCanvas');
 const onionCtx = onionCanvas.getContext('2d');
 
@@ -43,6 +104,12 @@ const drawingCtx = drawingCanvas.getContext('2d');
 
 const frameCtxMenu = document.getElementById('frame-context-menu');
 let menuTargetFrame = null;
+
+let activePointers = new Map();
+let initialPinchDistance = 0;
+let initialScale = 1;
+
+canvas.style.touchAction = 'none';
 
 const durationInput = document.getElementById('durationInput');
 durationInput.onchange = () => {
@@ -146,9 +213,15 @@ window.addEventListener('keydown', (e) => {
     console.log(`Key pressed: ${key} | Ctrl: ${isCmd}`);
 
     if (isCmd) {
-        if (key === 'z') {
+        if (key === 'z' && !e.shiftKey) {
             e.preventDefault();
             timeline.undo(canvas);
+            syncUI();
+            return;
+        }
+        if (key === 'y' || (key === 'z' && e.shiftKey)) {
+            e.preventDefault();
+            timeline.redo(canvas);
             syncUI();
             return;
         }
@@ -163,6 +236,9 @@ window.addEventListener('keydown', (e) => {
             syncUI();
             return;
         }
+        /*if (isCmd && key === 'k') {
+            process.crash();
+        }*/  // DANGER!!!!!!!
         return;
     }
     switch (key) {
@@ -234,6 +310,7 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 ipcRenderer.on('menu-undo', () => { timeline.undo(canvas); syncUI(); });
+ipcRenderer.on('menu-redo', () => { timeline.redo(canvas); syncUI(); });
 ipcRenderer.on('menu-copy', () => timeline.copyFrame());
 ipcRenderer.on('menu-paste', () => { timeline.pasteFrame(canvas); syncUI(); });
 ipcRenderer.on('menu-clear', () => { timeline.clearFrame(canvas); syncUI(); });
@@ -441,86 +518,146 @@ stage.addEventListener('mousedown', (e) => {
     }
 });
 
-canvas.addEventListener('mousedown', (e) => {
-    document.getElementById('brush-preview').style.opacity = '1';
+canvas.addEventListener('pointerdown', (e) => {
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    if (e.button !== 0 || timeline.isPlaying) return;
-    isDrawing = true;
-    timeline.recordState();
+    if (timeline.isPlaying) return;
 
-    const pos = getCanvasCoords(e);
-    smoothedX = pos.x;
-    smoothedY = pos.y;
+    const brushPreview = document.getElementById('brush-preview');
+    if (brushPreview) brushPreview.style.opacity = '1';
 
-    currentPath = [{ x: smoothedX, y: smoothedY }];
+    if (activePointers.size === 1) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-    if (currentTool === 'bucket') {
-        floodFill(ctx, Math.floor(pos.x), Math.floor(pos.y), colorPicker.value);
+        isDrawing = true;
+        timeline.recordState();
+
+        const pos = getCanvasCoords(e);
+        smoothedX = pos.x;
+        smoothedY = pos.y;
+        currentPath = [{ x: smoothedX, y: smoothedY }];
+
+        if (currentTool === 'bucket') {
+            floodFill(ctx, Math.floor(pos.x), Math.floor(pos.y), colorPicker.value);
+            isDrawing = false;
+        } else {
+            drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            setupContext(drawingCtx);
+        }
+        canvas.setPointerCapture(e.pointerId);
+    }
+    else if (activePointers.size === 2) {
         isDrawing = false;
-    } else {
-        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-        setupContext(drawingCtx);
+        isPanning = true;
+
+        const pts = Array.from(activePointers.values());
+        initialPinchDistance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        initialScale = scale;
+
+        startX = ((pts[0].x + pts[1].x) / 2) - offsetX;
+        startY = ((pts[0].y + pts[1].y) / 2) - offsetY;
     }
 });
 
-window.addEventListener('mousemove', (e) => {
+window.addEventListener('pointermove', (e) => {
+    // 1. Update the pointer position in our map
+    if (activePointers.has(e.pointerId)) {
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
     updateCursor(e);
-    if (isPanning) {
+
+    if (isPanning && e.pointerType === 'mouse') {
         offsetX = e.clientX - startX;
         offsetY = e.clientY - startY;
         updateView();
-        return;
+        return; // Don't draw while panning
     }
 
-    const pos = getCanvasCoords(e);
-    updateCursor(e);
+    // 2. PINCH / ZOOM / PAN LOGIC (Multi-finger or multi-input)
+    if (activePointers.size >= 2) {
+        const pts = Array.from(activePointers.values());
+        const currentDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
 
-    smoothedX += (pos.x - smoothedX) * (1 - smoothing);
-    smoothedY += (pos.y - smoothedY) * (1 - smoothing);
+        const zoomFactor = currentDist / initialPinchDistance;
+        scale = Math.min(Math.max(initialScale * zoomFactor, 0.05), 10);
 
-    if (!isDrawing) return;
+        const midX = (pts[0].x + pts[1].x) / 2;
+        const midY = (pts[0].y + pts[1].y) / 2;
+        offsetX = midX - startX;
+        offsetY = midY - startY;
 
-    if (currentTool === 'brush') {
-        currentPath.push({ x: smoothedX, y: smoothedY });
-        drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-        drawingCtx.beginPath();
-        drawingCtx.moveTo(currentPath[0].x, currentPath[0].y);
-        for (let i = 1; i < currentPath.length; i++) {
-            drawingCtx.lineTo(currentPath[i].x, currentPath[i].y);
-        }
-        drawingCtx.stroke();
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (timeline.frames[timeline.currentFrame]) {
-            ctx.putImageData(timeline.frames[timeline.currentFrame], 0, 0);
-        }
-        ctx.drawImage(drawingCanvas, 0, 0);
+        updateView();
+        return; // Stop here so we don't draw while zooming
     }
-    else if (currentTool === 'erase') {
-        setupContext(ctx);
 
-        ctx.beginPath();
-        const lastPoint = currentPath[currentPath.length - 1];
-        ctx.moveTo(lastPoint.x, lastPoint.y);
-        ctx.lineTo(smoothedX, smoothedY);
-        ctx.stroke();
+    // 3. DRAWING LOGIC (Single input)
+    if (isDrawing && activePointers.size === 1) {
+        const pos = getCanvasCoords(e);
 
-        currentPath.push({ x: smoothedX, y: smoothedY });
+        // Apply smoothing (Like a car's steering wheel having a little weight)
+        smoothedX += (pos.x - smoothedX) * (1 - smoothing);
+        smoothedY += (pos.y - smoothedY) * (1 - smoothing);
+
+        if (currentTool === 'brush') {
+            currentPath.push({ x: smoothedX, y: smoothedY });
+            drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+            // Draw the smooth path
+            drawingCtx.beginPath();
+            drawingCtx.moveTo(currentPath[0].x, currentPath[0].y);
+            for (let i = 1; i < currentPath.length; i++) {
+                drawingCtx.lineTo(currentPath[i].x, currentPath[i].y);
+            }
+            drawingCtx.stroke();
+
+            // Refresh main canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (timeline.frames[timeline.currentFrame]) {
+                ctx.putImageData(timeline.frames[timeline.currentFrame], 0, 0);
+            }
+            ctx.drawImage(drawingCanvas, 0, 0);
+
+        } else if (currentTool === 'erase') {
+            setupContext(ctx);
+            ctx.beginPath();
+            const lastPoint = currentPath[currentPath.length - 1];
+            ctx.moveTo(lastPoint.x, lastPoint.y);
+            ctx.lineTo(smoothedX, smoothedY);
+            ctx.stroke();
+            currentPath.push({ x: smoothedX, y: smoothedY });
+        }
     }
 });
 
-window.addEventListener('mouseup', () => {
-    document.getElementById('brush-preview').style.opacity = '0';
-
-    if (isDrawing) {
+window.addEventListener('pointerup', (e) => {
+    // Save the frame if we were drawing
+    if (isDrawing && activePointers.size === 1) {
         timeline.saveFrame(canvas);
         updateSingleThumbnail(timeline.currentFrame);
+        canvas.releasePointerCapture(e.pointerId);
     }
-    isDrawing = false;
-    isPanning = false;
-    stage.style.cursor = 'none';
-});
 
+    // Clean up the map
+    activePointers.delete(e.pointerId);
+
+    // Reset states based on what's left
+    if (activePointers.size < 2) {
+        isPanning = false;
+        stage.style.cursor = 'default';
+    }
+
+    if (activePointers.size === 0) {
+        isDrawing = false;
+        const brushPreview = document.getElementById('brush-preview');
+        if (brushPreview) brushPreview.style.opacity = '0';
+    }
+
+    if (e.button === 1) { // Middle mouse
+        isPanning = false;
+        stage.style.cursor = 'default';
+    }
+});
 document.getElementById('ctx-clear').onclick = () => {
     if (menuTargetFrame === null) return;
     timeline.frames[menuTargetFrame] = null;
