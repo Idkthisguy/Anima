@@ -1,4 +1,4 @@
-# 🎨 Anima (v1.0.0)
+# 🎨 Anima (v1.1.0)
 **A lightweight, 2D animation engine.**
 
 Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
