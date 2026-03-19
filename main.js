@@ -10,6 +10,17 @@ ffmpeg.setFfmpegPath(ffmpegStatic);
 
 let win;
 
+if (process.env.NODE_ENV === "development") {
+    try {
+        require('electron-reloader')(module, {
+            debug: true,
+            watchRenderer: true
+        });
+    } catch (err) {
+        console.error("FAILED TO AUTO RELOAD: ", err);
+    }
+}
+
 function createWindow() {
     if (win) return;
     win = new BrowserWindow({
@@ -19,8 +30,9 @@ function createWindow() {
         backgroundColor: '#121212',
         icon: path.join(__dirname, 'icon.ico'),
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
         }
     });
 
@@ -40,7 +52,10 @@ function createWindow() {
                             properties: ['openFile'],
                             filters: [{ name: 'Anima Project', extensions: ['anima'] }]
                         });
-                        if (!result.canceled) win.webContents.send('menu-open', result.filePaths[0]);
+                        if (!result.canceled) {
+                            const content = fs.readFileSync(result.filePaths[0], 'utf-8');
+                            win.webContents.send('menu-open', JSON.parse(content));
+                        }
                     }
                 },
                 { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => win.webContents.send('menu-save') },
@@ -66,6 +81,15 @@ function createWindow() {
                         {
                             label: 'Export as WebM',
                             click: () => win.webContents.send('menu-export', 'webm')
+                        },
+                        {
+                            label: 'Export as Sprite Sheet (.png)',
+                            accelerator: 'CmdOrCtrl+Shift+E',
+                            click: () => win.webContents.send('menu-export', 'spritesheet')
+                        },
+                        {
+                            label: 'Export as GIF',
+                            click: () => win.webContents.send('menu-export', 'gif')
                         }
                     ]
                 },
@@ -126,7 +150,31 @@ ipcMain.on('request-save-as-dialog', async () => {
     if (!result.canceled) win.webContents.send('menu-save-as', result.filePath);
 });
 
-ipcMain.on('save-exported-file', async (event, { BufferData, requestedFormat, fps }) => {
+ipcMain.on('save-sprite-sheet', async (event, base64Data) => {
+    const result = await dialog.showSaveDialog(win, {
+        title: 'Export Sprite Sheet',
+        defaultPath: 'anima_spritesheet.png',
+        filters: [{ name: 'PNG Image', extensions: ['png'] }]
+    });
+
+    if (!result.canceled && result.filePath) {
+        const imageBuffer = Buffer.from(base64Data, 'base64');
+
+        fs.writeFile(result.filePath, imageBuffer, (err) => {
+            if (err) {
+                dialog.showErrorBox('SAVE ERROR', 'Could not save the sprite sheet.');
+            } else {
+                dialog.showMessageBox(win, {
+                    type: 'info',
+                    title: 'Success',
+                    message: 'Sprite sheet exported!'
+                });
+            }
+        });
+    }
+});
+
+/*ipcMain.on('save-exported-file', async (event, { BufferData, requestedFormat, fps }) => {
     const finalExtension = requestedFormat || 'mp4';
     const result = await dialog.showSaveDialog(win, {
         filters: [{ name: 'Video File', extensions: [finalExtension] }]
@@ -134,7 +182,7 @@ ipcMain.on('save-exported-file', async (event, { BufferData, requestedFormat, fp
 
     if (result.canceled) return;
 
-    const buffer = Buffer.from(BufferData);
+    const buffer = Buffer.from(Object.values(BufferData));
     const tempDir = app.getPath('userData');
     const tempWebmPath = path.join(tempDir, `export_temp_${Date.now()}.webm`);
     const currentFPS = parseInt(fps) || 12;
@@ -189,6 +237,105 @@ ipcMain.on('save-exported-file', async (event, { BufferData, requestedFormat, fp
             })
             .save(result.filePath);
     });
+});*/ //keep it as this for now, whoever is reading this
+
+
+ipcMain.on('export-frames', async (event, { frames, format, fps }) => {
+    const result = await dialog.showSaveDialog(win, {
+        filters: [{ name: 'Video', extensions: [format] }]
+    });
+    if (result.canceled) {
+        win.webContents.send('export-done');
+        return;
+    }
+
+    const tempDir = app.getPath('userData');
+    const framesDir = path.join(tempDir, `frames_${Date.now()}`);
+    fs.mkdirSync(framesDir);
+
+    for (let i = 0; i < frames.length; i++) {
+        const framePath = path.join(framesDir, `frame${String(i).padStart(5, '0')}.png`);
+        fs.writeFileSync(framePath, Buffer.from(frames[i], 'base64'));
+        win.webContents.send('export-progress', Math.round((i / frames.length) * 40));
+    }
+
+    const inputPattern = path.join(framesDir, 'frame%05d.png');
+
+    ffmpeg()
+        .input(inputPattern)
+        .inputFPS(fps)
+        .outputOptions([
+            '-c:v libx264',
+            '-pix_fmt yuv420p',
+            '-profile:v high',
+            '-crf 18',
+            '-preset medium',
+            '-movflags +faststart'
+        ])
+        .on('progress', (p) => {
+            win.webContents.send('export-progress', 40 + Math.round((p.percent || 0) * 0.6));
+        })
+        .on('end', () => {
+            fs.readdirSync(framesDir).forEach(f => fs.unlinkSync(path.join(framesDir, f)));
+            fs.rmdirSync(framesDir);
+            win.webContents.send('export-progress', 100);
+            setTimeout(() => {
+                win.webContents.send('export-done');
+                dialog.showMessageBox(win, { type: 'info', title: 'Done!', message: 'Export complete!' });
+            }, 300);
+        })
+        .on('error', (err) => {
+            fs.readdirSync(framesDir).forEach(f => fs.unlinkSync(path.join(framesDir, f)));
+            fs.rmdirSync(framesDir);
+            win.webContents.send('export-done');
+            dialog.showErrorBox('Export Failed', err.message);
+        })
+        .save(result.filePath);
+});
+
+ipcMain.on('report-crash', (event, report) => {
+    const logPath = path.join(os.homedir(), 'Desktop', 'anima-crash-log.txt');
+    fs.writeFileSync(logPath, report);
+
+    dialog.showErrorBox("ANIMA HAS CRASHED", `Log saved to: ${logPath}`);
+});
+
+ipcMain.on('save-project', async (event, projectData) => {
+    const { filePath } = await dialog.showSaveDialog({
+        title: 'Save Anima project',
+        filters: [{ name: 'Anima Project File', extensions: ['anima'] }]
+    });
+
+    if (filePath) {
+        fs.writeFileSync(filePath, JSON.stringify(projectData));
+        dialog.showMessageBox(win, { type: 'info', title: 'Saved!', message: `Project saved!` });
+    }
+});
+
+ipcMain.on('open-project', async (event) => {
+    const { filePaths } = await dialog.showOpenDialog({
+        properties: ['openFile'],
+        filters: [{ name: 'Anima Project File', extensions: ['anima'] }]
+    });
+
+    if (filePaths.length > 0) {
+        const content = fs.readFileSync(filePaths[0], 'utf-8');
+
+        event.reply('project-loaded', JSON.parse(content));
+    }
+});
+
+ipcMain.on('save-gif', async (event, bufferData) => {
+    const result = await dialog.showSaveDialog(win, {
+        defaultPath: 'anima.gif',
+        filters: [{ name: 'GIF Image', extensions: ['gif'] }]
+    });
+    if (!result.canceled) {
+        fs.writeFile(result.filePath, Buffer.from(bufferData), (err) => {
+            if (err) dialog.showErrorBox('Save Error', err.message);
+            else dialog.showMessageBox(win, { type: 'info', title: 'Done!', message: 'GIF exported!' });
+        });
+    }
 });
 
 app.whenReady().then(createWindow);

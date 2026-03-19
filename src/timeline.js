@@ -2,7 +2,7 @@ export class Timeline {
     constructor(maxFrames = 60) {
         this.currentFrame = 0;
         this.maxFrames = maxFrames;
-        this.frames = new Array(maxFrames + 1).fill(null);
+        this.frames = new Array(maxFrames).fill(null);
         this.undoStack = [];
         this.redoStack = [];
         this.clipboard = null;
@@ -10,17 +10,16 @@ export class Timeline {
     }
 
     setDuration(newMax) {
-        const oldMax = this.maxFrames;
         this.maxFrames = newMax;
 
-        if (newMax > oldMax) {
-            const extra = new Array(newMax - oldMax).fill(null);
-            this.frames = [...this.frames, ...extra];
-        } else {
-            this.frames = this.frames.slice(0, newMax + 1);
-            if (this.currentFrame > newMax) {
-                this.currentFrame = newMax;
-            }
+        if (newMax > this.frames.length) {
+            const extraCount = newMax - this.frames.length;
+            const extraSlots = new Array(extraCount).fill(null);
+            this.frames = [...this.frames, ...extraSlots];
+        }
+
+        if (this.currentFrame >= this.maxFrames) {
+            this.currentFrame = this.maxFrames - 1;
         }
     }
 

@@ -1,24 +1,9 @@
 import { Timeline } from "./timeline.js";
-let ipcRenderer;
-try {
-    const electron = require('electron');
-    ipcRenderer = electron.ipcRenderer;
-} catch (e) {
-    console.warn("Not running in Electron. IPC disabled.");
-}
-
-const { remote } = require('electron');
-const dialog = require('electron').remote ? require('electron').remote.dialog : null;
-
-const path = require('path');
-const { shell } = require('electron');
-const fs = require('fs');
 
 window.focus();
 
 // --- CRASH LOG SYSTEM ---
 function handleCrash(message, source, lineno, colno, error) {
-    const logPath = path.join(require('os').homedir(), 'Desktop', 'anima-crash-log.txt');
     const report = `--- ANIMA CRASH REPORT (${new Date().toLocaleString()}) ---
 Look, I'm building this solo and I clearly missed something. Sorry about that!
 
@@ -27,35 +12,11 @@ FILE: ${source}
 LINE: ${lineno}:${colno}
 STACK: ${error ? error.stack : 'N/A'}
 
-PLATFORM: ${process.platform}
 ------------------------------------------`;
 
-    try {
-        fs.writeFileSync(logPath, report);
-        showCrashPopup(logPath);
-    } catch (e) { console.error(e); }
+    window.AnimaAPI.sendCrashReport(report);
 }
 
-function showCrashPopup(logPath) {
-    document.body.innerHTML = '';
-    document.body.style.background = '#111';
-
-    const overlay = document.createElement('div');
-    overlay.style = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);color:white;z-index:10000;display:flex;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;padding:20px;";
-    overlay.innerHTML = `
-        <div style="max-width:500px; padding:30px; border: 2px solid #ff4444; border-radius:10px; background:#111;">
-            <h1 style="color:#ff4444;">Ouch. Anima Crashed.</h1>
-            <p>I'm really sorry! I've saved a <b>crash log</b> to your Desktop.</p>
-            <p style="color:#aaa; font-size:0.9em;">Path: ${logPath}</p>
-            <p>If you post this log as an issue on GitHub, I can fix this for you and everyone else.</p>
-            <div style="margin-top:20px;">
-                <button id="openGit" style="background:#2ea44f; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; margin-right:10px;">Post to GitHub</button>
-                <button onclick="location.reload()" style="background:#444; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">Restart App</button>
-            </div>
-        </div>`;
-    document.body.appendChild(overlay);
-    document.getElementById('openGit').onclick = () => shell.openExternal('https://github.com/YOUR_USERNAME/YOUR_REPO/issues');
-}
 
 window.onerror = (m, s, l, c, e) => { handleCrash(m, s, l, c, e); return false; };
 window.onunhandledrejection = (e) => { handleCrash(e.reason, 'Async/Promise', 0, 0, e.reason); };
@@ -138,6 +99,18 @@ let currentTool = 'brush';
 let startX, startY;
 let animationId = null;
 
+const copyBtn = document.getElementById("copyBtn");
+const pasteBtn = document.getElementById("pasteBtn");
+
+copyBtn.addEventListener('click', () => {
+    timeline.copyFrame();
+});
+
+pasteBtn.addEventListener('click', () => {
+    timeline.pasteFrame(canvas);
+    syncUI();
+});
+
 let currentFilePath = null;
 
 let brushPreviewTimeout = null;
@@ -201,7 +174,10 @@ opacitySlider.oninput = () => {
 };
 
 colorPicker.oninput = () => {
+    const newColor = colorPicker.value;
     if (currentTool === 'brush') toolSettings.brush.color = colorPicker.value;
+
+    document.querySelector('.color-picker-wrapper').style.background = colorPicker.value;
 };
 
 window.addEventListener('keydown', (e) => {
@@ -309,73 +285,6 @@ window.addEventListener('keydown', (e) => {
     }
 }, true);
 
-ipcRenderer.on('menu-undo', () => { timeline.undo(canvas); syncUI(); });
-ipcRenderer.on('menu-redo', () => { timeline.redo(canvas); syncUI(); });
-ipcRenderer.on('menu-copy', () => timeline.copyFrame());
-ipcRenderer.on('menu-paste', () => { timeline.pasteFrame(canvas); syncUI(); });
-ipcRenderer.on('menu-clear', () => { timeline.clearFrame(canvas); syncUI(); });
-ipcRenderer.on('menu-save', () => {
-    if (currentFilePath) {
-        try {
-            fs.writeFileSync(currentFilePath, getProjectData());
-            console.log("Saved to:", currentFilePath);
-            alert("Project Saved!");
-        } catch (err) {
-            alert("Save failed: " + err.message);
-        }
-    } else {
-        ipcRenderer.send('request-save-as-dialog');
-    }
-});
-
-ipcRenderer.on('menu-save-as', (event, filePath) => {
-    if (!filePath) return;
-
-    currentFilePath = filePath;
-    try {
-        fs.writeFileSync(currentFilePath, getProjectData());
-        alert("Project Saved!");
-    } catch (err) {
-        alert("Save As failed: " + err.message);
-    }
-});
-
-ipcRenderer.on('menu-open', async (event, filePath) => {
-    if (!filePath) return;
-
-    try {
-        const rawData = fs.readFileSync(filePath, 'utf8');
-        const data = JSON.parse(rawData);
-
-        currentFilePath = filePath;
-        fpsInput.value = data.fps;
-
-        for (let i = 0; i < data.frames.length; i++) {
-            if (data.frames[i]) {
-                const img = new Image();
-                img.src = data.frames[i];
-                await img.decode();
-                const tc = document.createElement('canvas');
-                tc.width = canvas.width;
-                tc.height = canvas.height;
-                const tctx = tc.getContext('2d');
-                tctx.drawImage(img, 0, 0);
-                timeline.frames[i] = tctx.getImageData(0, 0, canvas.width, canvas.height);
-            } else {
-                timeline.frames[i] = null;
-            }
-        }
-        durationInput.value = data.maxFrames || 60;
-        frameSlider.max = data.maxFrames || 60;
-        timeline.setDuration(parseInt(durationInput.value));
-        timeline.gotoFrame(0, canvas);
-        syncUI();
-        console.log("Loaded:", currentFilePath);
-    } catch (err) {
-        alert("Failed to open file: " + err.message);
-    }
-});
-
 function getProjectData() {
     return JSON.stringify({
         appName: "Anima",
@@ -402,52 +311,33 @@ function syncUI() {
 
 function updateThumbnails() {
     frameStrip.innerHTML = '';
-    timeline.frames.forEach((frame, i) => {
-        const t = document.createElement('div');
-        t.className = `thumb ${i === timeline.currentFrame ? 'active' : ''} ${frame ? 'has-data' : ''}`;
-        t.innerText = i + 1;
+    for (let i = 0; i < timeline.maxFrames; i++) {
+        const frameData = timeline.frames[i];
 
-        t.onclick = () => {
+        const thumb = document.createElement('div');
+        thumb.className = `thumb ${i === timeline.currentFrame ? 'active' : ''}`;
+
+        if (frameData) thumb.classList.add('has-data');
+
+        thumb.innerText = i + 1;
+        thumb.onclick = () => {
             stopPlayback();
+            timeline.saveFrame(canvas);
             timeline.gotoFrame(i, canvas);
             syncUI();
         };
 
-        t.oncontextmenu = (e) => {
-            e.preventDefault();
-            menuTargetFrame = i;
-
-            frameCtxMenu.style.display = 'block';
-            frameCtxMenu.style.left = e.clientX + 'px';
-            frameCtxMenu.style.top = e.clientY + 'px';
-        };
-
-        frameStrip.appendChild(t);
-    });
+        frameStrip.appendChild(thumb);
+    }
 }
 
 window.addEventListener('click', () => {
     frameCtxMenu.style.display = 'none';
 });
 
-ipcRenderer.on('menu-new', () => {
-    if (confirm("Create new project? This will wipe your current canvas.")) {
-        timeline.frames = new Array(timeline.maxFrames + 1).fill(null);
-        timeline.undoStack = [];
-        timeline.gotoFrame(0, canvas);
-        syncUI();
-    }
-});
-
-ipcRenderer.on('menu-reset-view', () => {
-    scale = 0.5;
-    offsetX = (stage.clientWidth - (canvas.width * scale)) / 2;
-    offsetY = (stage.clientHeight - (canvas.height * scale)) / 2;
-    updateView();
-});
-
 frameSlider.oninput = (e) => {
     stopPlayback();
+    timeline.saveFrame(canvas);
     const frameIndex = parseInt(e.target.value);
     timeline.gotoFrame(frameIndex, canvas);
     syncUI();
@@ -474,7 +364,7 @@ function play() {
 function stopPlayback() {
     timeline.isPlaying = false;
     clearTimeout(animationId);
-    playBtn.innerText = "▶ Play";
+    playBtn.querySelector('.btn-icon').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play-icon lucide-play"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>`;
     playBtn.style.background = "var(--accent)";
 }
 
@@ -488,7 +378,7 @@ playBtn.onclick = () => {
         }
 
         timeline.isPlaying = true;
-        playBtn.innerText = "⏸ Pause";
+        playBtn.querySelector('.btn-icon').innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pause-icon lucide-pause"><rect x="14" y="3" width="5" height="18" rx="1"/><rect x="5" y="3" width="5" height="18" rx="1"/></svg>`;
         playBtn.style.background = "#cc3333";
         play();
     }
@@ -840,7 +730,11 @@ function getCanvasCoords(e) {
 const settingsTrigger = document.getElementById('settings-trigger');
 const settingsMenu = document.getElementById('settings-menu');
 settingsTrigger.onclick = () => {
-    settingsMenu.style.display = settingsMenu.style.display === 'none' ? 'block' : 'none';
+    settingsTrigger.classList.toggle('active');
+
+    settingsMenu.classList.toggle('visible');
+
+    settingsMenu.style.display = settingsMenu.classList.contains('visible') ? 'block' : 'none';
 };
 
 document.getElementById('smoothingSlider').oninput = (e) => {
@@ -894,72 +788,263 @@ function updateSingleThumbnail(index) {
     }
 }
 
-ipcRenderer.on('menu-export', async (event, format) => {
-    stopPlayback();
-    const originalFrame = timeline.currentFrame;
-    const fps = parseInt(fpsInput.value) || 12;
+function checkValidFrames() {  // Checks for empty frames for spritesheet and filters thems
+    const validFrames = []
+    console.log(`Checking ${timeline.frames.length} total timeline slots...`);
 
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = canvas.width;
-    exportCanvas.height = canvas.height;
-    const exportCtx = exportCanvas.getContext('2d');
+    for (let i = 0; i < timeline.frames.length; i++) {
+        const frameData = timeline.frames[i];
 
-    const stream = exportCanvas.captureStream(0);
-    const recorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9',
-        videoBitsPerSecond: 5000000
-    });
-
-
-    const chunks = [];
-    recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-    };
-
-    const exportFinished = new Promise((resolve) => {
-        recorder.onstop = async () => {
-            const blob = new Blob(chunks, { type: 'video/webm' });
-            const arrayBuffer = await blob.arrayBuffer();
-
-            if (arrayBuffer.byteLength > 0) {
-                ipcRenderer.send('save-exported-file', {
-                    BufferData: arrayBuffer,
-                    requestedFormat: format,
-                    fps: fps
-                });
-            }
-            resolve();
-        };
-    });
-
-    recorder.start();
-    await new Promise(r => setTimeout(r, 100));
-
-    await new Promise(r => setTimeout(r, 100));
-
-    for (let i = 0; i <= timeline.maxFrames; i++) {
-        exportCtx.fillStyle = "white";
-        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-
-        const imgData = timeline.frames[i];
-        if (imgData) {
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            tempCanvas.getContext('2d').putImageData(imgData, 0, 0);
-            exportCtx.drawImage(tempCanvas, 0, 0);
+        if (!frameData) {
+            console.log(`Frame ${i} is literally null.`);
+            continue;
         }
 
-        stream.getVideoTracks()[0].requestFrame();
+        let isBlank = true;
+        const pixels = frameData.data;
 
-        await new Promise(r => setTimeout(r, 1000 / fps));
+
+        for (let p = 3; p < pixels.length; p += 4) {
+            if (pixels[p] > 0) {
+                isBlank = false;
+                break;
+            }
+        }
+
+        if (!isBlank) {
+            validFrames.push(frameData)
+        }
+    }
+    return validFrames;
+}
+
+async function buildAndExportSpritesheet() {
+    stopPlayback();
+
+    timeline.saveFrame(canvas);
+
+    const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    timeline.frames[timeline.currentFrame] = currentImageData;
+
+    console.log(`Forced sync of Frame ${timeline.currentFrame} before export.`);
+
+    const framesToExport = checkValidFrames();
+
+    if (framesToExport.length === 0) {
+        alert("THE TIMELINE IS EMPTY!");
+        return;
     }
 
-    recorder.stop();
-    await exportFinished;
+    const columns = 8;
+    const totalFrames = timeline.maxFrames;
+    const rows = Math.ceil(framesToExport.length / columns);
 
-    timeline.gotoFrame(originalFrame, canvas);
-    syncUI();
+    const sheetCanvas = document.createElement('canvas');
+    sheetCanvas.width = canvas.width * columns;
+    sheetCanvas.height = canvas.height * rows;
+    const sheetCtx = sheetCanvas.getContext('2d');
+
+
+    for (let i = 0; i < totalFrames; i++) {
+        const frameData = timeline.frames[i];
+        if (!frameData) continue;
+
+        const currentCol = i % columns;
+        const currentRow = Math.floor(i / columns);
+
+        const stampX = currentCol * canvas.width;
+        const stampY = currentRow * canvas.height;
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        tempCanvas.getContext('2d').putImageData(frameData, 0, 0);
+
+        sheetCtx.drawImage(tempCanvas, stampX, stampY);
+    }
+
+    const dataUrl = sheetCanvas.toDataURL('image/png');
+    const base64Data = dataUrl.split(';base64,').pop();
+    window.AnimaAPI.sendSpriteSheet(base64Data);
+}
+
+function packProject() {
+    const savedFrames = timeline.frames.map(frame => {
+        if (!frame) return null;
+        const tmp = document.createElement('canvas');
+        tmp.width = frame.width;
+        tmp.height = frame.height;
+        tmp.getContext('2d').putImageData(frame, 0, 0);
+        return tmp.toDataURL('image/png');
+    });
+
+    return {
+        version: "1.3",
+        maxFrames: timeline.maxFrames,
+        fps: parseInt(fpsInput.value) || 12,
+        frames: savedFrames
+    };
+}
+
+async function exportVideo(format) {
+    stopPlayback();
+    timeline.saveFrame(canvas);
+
+    const validFrames = checkValidFrames();
+    if (validFrames.length === 0) {
+        alert("Nothing to export, draw something first :/");
+        return;
+    }
+
+    const overlay = document.getElementById('export-overlay');
+    const barFill = document.getElementById('export-bar-fill');
+    const status = document.getElementById('export-status');
+    overlay.style.display = 'flex';
+    barFill.style.width = '0%';
+    status.innerText = 'Preparing frames...';
+
+    const fps = parseInt(fpsInput.value) || 12;
+
+    const frameDataUrls = [];
+    const tmp = document.createElement('canvas');
+    tmp.width = canvas.width;
+    tmp.height = canvas.height;
+    const tmpCtx = tmp.getContext('2d');
+
+    for (let i = 0; i < validFrames.length; i++) {
+        tmpCtx.fillStyle = '#ffffff';
+        tmpCtx.fillRect(0, 0, tmp.width, tmp.height);
+
+        const frameCanvas = document.createElement('canvas');
+        frameCanvas.width = tmp.width;
+        frameCanvas.height = tmp.height;
+        frameCanvas.getContext('2d').putImageData(validFrames[i], 0, 0);
+        tmpCtx.drawImage(frameCanvas, 0, 0);
+
+        frameDataUrls.push(tmp.toDataURL('image/png').split(',')[1]);
+        barFill.style.width = Math.round((i / validFrames.length) * 50) + '%';
+        status.innerText = `Packing frame ${i + 1} / ${validFrames.length}...`;
+        await new Promise(r => setTimeout(r, 0));
+    }
+
+    status.innerText = 'Sending to encoder...';
+    barFill.style.width = '55%';
+
+    window.AnimaAPI.exportFrames({ frames: frameDataUrls, format, fps });
+}
+
+function exportGif() {
+    stopPlayback();
+    timeline.saveFrame(canvas);
+
+    const validFrames = checkValidFrames();
+    if (validFrames.length === 0) { alert("Nothing to export!"); return; }
+
+    const overlay = document.getElementById('export-overlay');
+    const barFill = document.getElementById('export-bar-fill');
+    const status = document.getElementById('export-status');
+    overlay.style.display = 'flex';
+    status.innerText = 'Building GIF...';
+
+    const fps = parseInt(fpsInput.value) || 12;
+    const delay = Math.round(1000 / fps);
+
+    const gif = new GIF({
+        workers: 2,
+        quality: 10,
+        width: canvas.width,
+        height: canvas.height,
+        workerScript: './gif.worker.js',
+        transparent: 0xFF00FF
+    });
+
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    validFrames.forEach((frame, i) => {
+        const pixels = new Uint8ClampedArray(frame.data);
+
+        for (let p = 0; p < pixels.length; p += 4) {
+            if (pixels[p + 3] < 128) {
+                pixels[p] = 255;
+                pixels[p + 1] = 0;
+                pixels[p + 2] = 255;
+                pixels[p + 3] = 255;
+            }
+        }
+
+        const keyed = new ImageData(pixels, frame.width, frame.height);
+        gif.addFrame(keyed, { delay });
+        barFill.style.width = Math.round((i / validFrames.length) * 60) + '%';
+    });
+
+    gif.on('progress', (p) => {
+        barFill.style.width = (60 + Math.round(p * 40)) + '%';
+        status.innerText = `Encoding... ${Math.round(p * 100)}%`;
+    });
+
+    gif.on('finished', (blob) => {
+        blob.arrayBuffer().then((buf) => {
+            window.AnimaAPI.saveGif(Array.from(new Uint8Array(buf)));
+            overlay.style.display = 'none';
+        });
+    });
+
+    gif.render();
+}
+
+window.AnimaAPI.onMenuAction('save', () => { window.AnimaAPI.saveProject(packProject()) })
+window.AnimaAPI.onMenuAction('open', (projectData) => {
+    timeline.frames = new Array(projectData.maxFrames).fill(null);
+    timeline.setDuration(projectData.maxFrames);
+    durationInput.value = projectData.maxFrames;
+    frameSlider.max = projectData.maxFrames;
+    if (projectData.fps) fpsInput.value = projectData.fps;
+
+    let loaded = 0;
+    const total = projectData.frames.filter(f => f !== null).length;
+
+    if (total === 0) {
+        timeline.gotoFrame(0, canvas);
+        syncUI();
+        return;
+    }
+
+    projectData.frames.forEach((frameDataUrl, i) => {
+        if (!frameDataUrl) return;
+
+        const img = new Image();
+        img.onload = () => {
+            const tmp = document.createElement('canvas');
+            tmp.width = canvas.width;
+            tmp.height = canvas.height;
+            tmp.getContext('2d').drawImage(img, 0, 0);
+            timeline.frames[i] = tmp.getContext('2d').getImageData(0, 0, tmp.width, tmp.height);
+
+            loaded++;
+            if (loaded === total) {
+                timeline.gotoFrame(0, canvas);
+                syncUI();
+            }
+        };
+        img.src = frameDataUrl;
+    });
+});
+
+window.AnimaAPI.onMenuAction('export', async (format) => {
+    if (format === 'spritesheet') { buildAndExportSpritesheet(); return; }
+    if (format === 'gif') { exportGif(); return; }
+    exportVideo(format);
+});
+
+window.AnimaAPI.onEvent('export-done', () => {
+    document.getElementById('export-overlay').style.display = 'none';
+});
+window.AnimaAPI.onEvent('export-progress', (pct) => {
+    document.getElementById('export-bar-fill').style.width = pct + '%';
+    document.getElementById('export-status').innerText = pct + '%';
 });
 
 init();

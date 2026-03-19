@@ -1,4 +1,4 @@
-# 🎨 Anima (v1.0.0)
+# 🎨 Anima (v1.2.0)
 **A lightweight, 2D animation engine.**
 
 Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
@@ -25,6 +25,11 @@ Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar
 | **Navigation** | `F` (Next Frame), `D` (Prev Frame) |
 | **Playback** | `Spacebar` (Play/Pause) |
 | **Canvas** | `Ctrl + Scroll` (Zoom), `Mid-Mouse` (Pan), `Ctrl + 0` (Reset) |
+
+## Demos
+
+![Demo Stickman GIF](./Stick_guy_forDemo.gif)
+
 
 ## Project Status & Contributions
 

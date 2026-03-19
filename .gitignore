@@ -3,6 +3,7 @@ node_modules/
 dist/
 out/
 build/
+Archive/
 
 # Logs
 npm-debug.log*
