@@ -4,13 +4,17 @@ on:
   push:
     branches:
       - dev
-    
+      - main
+
+env:
+  TAG: v1.2.0-beta2  
+  PRERELEASE: true 
 
 jobs:
   build-windows:
-    env:
-         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,9 +28,9 @@ jobs:
           path: dist/Anima-v*/*.exe
 
   build-linux:
-    env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,5 +41,32 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: linux-builds
-          path: |
-            dist/Anima-v*/*.AppImage
+          path: dist/Anima-v*/*.AppImage
+
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Read changelog
+        id: changelog
+        run: echo "NOTES<<EOF" >> $GITHUB_OUTPUT && cat CHANGELOG.md >> $GITHUB_OUTPUT && echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: ${{ env.PRERELEASE == 'true' && format('Pre-release {0}', env.TAG) || format('Release {0}', env.TAG) }}
+          prerelease: ${{ env.PRERELEASE == 'true' }}
+          target_commitish: ${{ env.PRERELEASE == 'true' && 'dev' || 'main' }}
+          body: ${{ steps.changelog.outputs.NOTES }}
+          files: artifacts/**/*
+          fail_on_unmatched_files: false

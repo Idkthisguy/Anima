@@ -1061,7 +1061,7 @@ window.AnimaAPI.onMenuAction('save', () => {
     }
 });
 
-window.AnimaAPI.onMenuAction('open', (projectData) => {
+window.AnimaAPI.onMenuAction('open', (projectData, filePath) => {
     currentFilePath = filePath || null;
 
     const w = projectData.width || 1920;
