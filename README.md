@@ -1,10 +1,14 @@
-# 🎨 Anima (v1.0.0)
+<div >
+  <img src="./media/Anima_header.png" width="300" alt="Anima title header">
+  <img src="./media/anima_logo.png" width="100" alt="Anima title header" align="left">
+</div>
+
 **A lightweight, 2D animation engine.**
 
 Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar timeline workflow, it focuses on the essentials: drawing, timing, and motion. 
 ---
 
-## 🌟 Key Features
+## Key Features
 * **Dynamic Timeline:** Frame-by-frame control with a high-performance preview.
 * **Ghosting (Onion Skinning):** Lightweight 2-frame tracing for precise motion tracking.
 * **Smooth Canvas:** Sub-pixel smoothing with middle-mouse panning and high-speed zoom.
@@ -25,6 +29,13 @@ Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar
 | **Navigation** | `F` (Next Frame), `D` (Prev Frame) |
 | **Playback** | `Spacebar` (Play/Pause) |
 | **Canvas** | `Ctrl + Scroll` (Zoom), `Mid-Mouse` (Pan), `Ctrl + 0` (Reset) |
+
+## Demos
+
+A GIF made in Anima
+
+![Demo Stickman GIF](./media/anima.gif)
+
 
 ## Project Status & Contributions
 
