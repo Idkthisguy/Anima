@@ -6,8 +6,8 @@
     "start": "electron .",
     "dist": "electron-builder --win",
     "dev": "cross-env NODE_ENV=development electron .",
-    "dist:win": "electron-builder --win",
-    "dist:linux": "electron-builder --linux",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:linux": "electron-builder --linux --publish never",
     "dist:all": "electron-builder --win --linux"
   },
   "build": {
