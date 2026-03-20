@@ -16,7 +16,7 @@
     "artifactName": "Anima-v${version}-${os}-${arch}.${ext}",
     "compression": "maximum",
     "directories": {
-      "output": "dist"
+      "output": "dist/Anima-v${version}"
     },
     "files": [
       "**/*",
