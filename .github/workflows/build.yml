@@ -58,7 +58,12 @@ jobs:
 
       - name: Read changelog
         id: changelog
-        run: echo "NOTES<<EOF" >> $GITHUB_OUTPUT && cat CHANGELOG.md >> $GITHUB_OUTPUT && echo "EOF" >> $GITHUB_OUTPUT
+        run: |
+          {
+            echo 'NOTES<<CHANGELOG_END'
+            cat CHANGELOG.md
+            echo 'CHANGELOG_END'
+          } >> $GITHUB_OUTPUT
 
       - name: Create or update release
         uses: softprops/action-gh-release@v2
