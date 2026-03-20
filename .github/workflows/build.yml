@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - dev
+    
 
 jobs:
   build-windows:
+    env:
+         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +24,8 @@ jobs:
           path: dist/Anima-v*/*.exe
 
   build-linux:
+    env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
