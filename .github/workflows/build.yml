@@ -2,8 +2,8 @@ name: Build Anima
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - dev
 
 jobs:
   build-windows:
