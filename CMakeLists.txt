@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Anima_Pro VERSION 0.1 LANGUAGES CXX)
+project(Anima_Pro VERSION 2.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 23)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -25,6 +27,10 @@ qt_add_qml_module(appAnima_Pro
     RESOURCES
         assets/icons/play.svg
         assets/icons/stop.svg
+        assets/icons/icon.png
+        RESOURCES README.md
+        RESOURCES .gitignore
+        RESOURCES LICENSE.txt
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
