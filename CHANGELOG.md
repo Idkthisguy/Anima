@@ -1,6 +1,8 @@
 # What's New in v1.2.0
 Huge changes and improving (this is where i'm gonna lock in from now on)
 
+Also this is the LAST version of Anima made in Electron, Anima is now moving on to [Qt](https://www.qt.io/) for better design, size, and performance.
+
 ### Improvements
 - **Improved Code:** I don't think it's calleed refactoring but i did cahnge the code to be better ig
 
