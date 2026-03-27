@@ -57,6 +57,9 @@ Anima is a "no-nonsense" creative tool built for speed. Designed with a familiar
 - Code-writer
 - Desktop Tester
 
+### yashmanikonda
+- Code-writer
+
 ### Ezure
 - Main Tester
 - Mobile tester
