@@ -38,6 +38,7 @@ qt_add_qml_module(appAnima_Pro
         SOURCES canvasprovider.h canvasprovider.cpp
         LICENSE.txt
         SOURCES timeline.h timeline.cpp
+        RESOURCES CHANGELOG.md
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
