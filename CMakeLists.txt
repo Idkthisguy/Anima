@@ -16,6 +16,8 @@ endif()
 
 qt_add_executable(appAnima_Pro
     main.cpp
+    engine.cpp
+    canvasprovider.cpp
     ${EXE_ICON}
 )
 
@@ -30,7 +32,12 @@ qt_add_qml_module(appAnima_Pro
         assets/icons/icon.png
         RESOURCES README.md
         RESOURCES .gitignore
-        RESOURCES LICENSE
+        RESOURCES
+        SOURCES engine.h engine.cpp
+        SOURCES Frames.h
+        SOURCES canvasprovider.h canvasprovider.cpp
+        LICENSE.txt
+        SOURCES timeline.h timeline.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -49,6 +56,18 @@ target_link_libraries(appAnima_Pro
     Qt6::QuickControls2
     Qt6::Svg
 )
+
+if(WIN32)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt6_install_prefix}/bin")
+
+    add_custom_command(TARGET appAnima_Pro POST_BUILD
+            COMMAND "${CMAKE_COMMAND}" -E env PATH="${_qt6_install_prefix}/bin"
+                    "${WINDEPLOYQT_EXECUTABLE}"
+                    --qmldir "${CMAKE_CURRENT_SOURCE_DIR}"
+                    "$<TARGET_FILE:appAnima_Pro>"
+            COMMENT "Deploying Qt dependencies for Windows..."
+        )
+endif()
 
 install(TARGETS appAnima_Pro
     BUNDLE DESTINATION .
