@@ -123,3 +123,20 @@ void Timeline::clearFrame() {
     m_frames[m_current]->image.fill(Qt::transparent);
     emit imageChanged();
 }
+
+void Timeline::clearAll() {
+    m_frames.clear();
+    m_undoStack.clear();
+    m_redoStack.clear();
+    m_current = 0;
+    addFrame();
+    emit currentFrameChanged();
+    emit frameCountChanged();
+    emit imageChanged();
+}
+
+void Timeline::toggleOnionSkin() {
+    setOnionBack(!m_onionBack);
+    setOnionForward(!m_onionForward);
+    emit imageChanged();
+}

@@ -2,6 +2,7 @@
 #include <QStack>
 #include <QPoint>
 #include <cmath>
+#include <QCoreApplication>
 
 Engine::Engine(QObject* parent) : QObject(parent) {
     connect(&m_timeline, &Timeline::imageChanged, this, [this]{
@@ -26,7 +27,11 @@ void Engine::setColor(const QString& h) {
 void Engine::beginStroke(qreal x, qreal y) {
     m_timeline.pushUndo();
     m_inStroke = true;
-    m_lastX = x; m_lastY = y;
+
+    m_smoothPos = QPointF(x, y);
+    m_lastX = x;
+    m_lastY = y;
+
     paintAt(x, y);
 }
 
@@ -40,6 +45,11 @@ void Engine::paintAt(qreal x, qreal y) {
 
     QImage& img = m_timeline.currentImage();
     QPainter p(&img);
+
+    float weight = 1.0f - m_smoothing;
+
+    m_smoothPos.setX(m_smoothPos.x() + (x - m_smoothPos.x()) * weight);
+    m_smoothPos.setY(m_smoothPos.y() + (y - m_smoothPos.y()) * weight);
 
     p.setRenderHint(QPainter::Antialiasing);
     p.setRenderHint(QPainter::SmoothPixmapTransform);
@@ -60,9 +70,11 @@ void Engine::paintAt(qreal x, qreal y) {
 
     p.setPen(pen);
 
-    p.drawLine(QPointF(m_lastX, m_lastY), QPointF(x, y));
+    p.drawLine(QPointF(m_lastX, m_lastY), m_smoothPos);
 
-    m_lastX = x; m_lastY = y;
+    m_lastX = m_smoothPos.x();
+    m_lastY = m_smoothPos.y();
+
     emit m_timeline.imageChanged();
 }
 
@@ -167,4 +179,20 @@ QImage Engine::compositeFrame() const {
     p.setOpacity(1.0);
     p.drawImage(0, 0, cur);
     return out;
+}
+
+void Engine::terminateAnima(int returnCode) {
+    QCoreApplication::exit(returnCode);
+}
+
+void Engine::newProject() {
+    m_timeline.clearAll();
+    emit frameUpdated(compositeFrame());
+}
+
+void Engine::setSmoothing(float v) {
+    if (m_smoothing != v) {
+        m_smoothing = v;
+        emit smoothingChanged();
+    }
 }

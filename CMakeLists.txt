@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Svg)
+find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Svg QuickEffects)
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -24,7 +24,7 @@ qt_add_executable(appAnima_Pro
 qt_add_qml_module(appAnima_Pro
     URI Anima_Pro
     QML_FILES
-        Main.qml
+    Main.qml
 
     RESOURCES
         assets/icons/play.svg
@@ -46,6 +46,7 @@ qt_add_qml_module(appAnima_Pro
 # explicit, fixed bundle identifier manually though.
 set_target_properties(appAnima_Pro PROPERTIES
 #    MACOSX_BUNDLE_GUI_IDENTIFIER com.example.appAnima_Pro
+    OUTPUT_NAME "Anima"
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -56,6 +57,7 @@ target_link_libraries(appAnima_Pro
     PRIVATE Qt6::Quick
     Qt6::QuickControls2
     Qt6::Svg
+    Qt6::QuickEffects
 )
 
 if(WIN32)
@@ -68,6 +70,31 @@ if(WIN32)
                     "$<TARGET_FILE:appAnima_Pro>"
             COMMENT "Deploying Qt dependencies for Windows..."
         )
+endif()
+
+
+if(WIN32)
+    set(PORTABLE_DIR "${CMAKE_BINARY_DIR}/Anima_Portable_v${PROJECT_VERSION}")
+
+    add_custom_target(MakePortable
+        COMMAND ${CMAKE_COMMAND} -E remove_directory "${PORTABLE_DIR}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PORTABLE_DIR}"
+
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:appAnima_Pro>" "${PORTABLE_DIR}/"
+
+        COMMAND "${CMAKE_COMMAND}" -E env PATH="${_qt6_install_prefix}/bin"
+                "${WINDEPLOYQT_EXECUTABLE}"
+                --qmldir "${CMAKE_CURRENT_SOURCE_DIR}"
+                "${PORTABLE_DIR}/Anima.exe"
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt" "${PORTABLE_DIR}/"
+
+        COMMENT "Generating clean Portable Alpha at: ${PORTABLE_DIR}"
+        DEPENDS appAnima_Pro
+    )
+
+    add_custom_command(TARGET appAnima_Pro POST_BUILD
+        COMMAND ${CMAKE_COMMAND} --build . --target MakePortable
+    )
 endif()
 
 install(TARGETS appAnima_Pro

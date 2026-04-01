@@ -34,6 +34,7 @@ public:
     void setOnionBack(bool v);
     void setOnionForward(bool v);
     void setOnionAlpha(float v);
+    void clearAll();
 
     QImage& currentImage();
     QImage  imageAt(int index) const;
@@ -54,6 +55,7 @@ public slots:
     void undo();
     void redo();
     void clearFrame();
+    void toggleOnionSkin();
 
 signals:
     void currentFrameChanged();

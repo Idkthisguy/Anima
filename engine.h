@@ -1,3 +1,5 @@
+
+
 #ifndef ENGINE_H
 #define ENGINE_H
 
@@ -14,6 +16,8 @@ class Engine : public QObject {
     Q_PROPERTY(float opacity    READ opacity    WRITE setOpacity    NOTIFY opacityChanged)
     Q_PROPERTY(QString color    READ color      WRITE setColor      NOTIFY colorChanged)
     Q_PROPERTY(Timeline* timeline READ timeline CONSTANT)
+    Q_PROPERTY(float smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged)
+
 
 public:
     enum Tool { Brush = 0, Eraser = 1, Bucket = 2, Eyedropper = 3 };
@@ -24,6 +28,7 @@ public:
     int     tool()      const { return m_tool; }
     int     brushSize() const { return m_brushSize; }
     float   opacity()   const { return m_opacity; }
+    float smoothing() const { return m_smoothing; }
     QString color()     const { return m_color.name(); }
     Timeline* timeline()     { return &m_timeline; }
 
@@ -31,6 +36,9 @@ public:
     void setBrushSize(int v);
     void setOpacity(float v);
     void setColor(const QString& hex);
+    void setSmoothing(float v);
+    Q_INVOKABLE void terminateAnima(int returnCode = 0);
+    Q_INVOKABLE void newProject();
 
 public slots:
     void paintAt(qreal x, qreal y);
@@ -45,6 +53,7 @@ signals:
     void colorChanged();
     void frameUpdated(const QImage& img);
     void colorPicked(const QString& hex);
+    void smoothingChanged();
 
 private:
     int     m_tool      = 0;
@@ -60,6 +69,9 @@ private:
     void drawCircle(QImage& img, qreal x, qreal y);
     void floodFill(QImage& img, int x, int y, const QColor& fill);
     QImage compositeFrame() const;
+
+    float m_smoothing = 0.5f;
+    QPointF m_smoothPos;
 };
 
 #endif
