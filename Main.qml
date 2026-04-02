@@ -207,23 +207,27 @@ ApplicationWindow {
                         {
                             lbl: "Br",
                             tip: "Brush (B)",
-                            id: 0
+                            id: 0,
+                            icon: "assets/icons/brush.svg"
                         },
                         {
                             lbl: "Er",
                             tip: "Eraser (E)",
-                            id: 1
+                            id: 1,
+                            icon: "assets/icons/eraser.svg"
                         },
                         {
                             lbl: "Bk",
                             tip: "Bucket (G)",
-                            id: 2
+                            id: 2,
+                            icon: "assets/icons/bucket.svg"
                         },
                         {
                             lbl: "Ey",
                             tip: "Eyedrop (I)",
-                            id: 3
-                        },
+                            id: 3,
+                            icon: "assets/icons/colorpicker.svg"
+                        }
                     ]
                     delegate: Item {
                         width: 40
@@ -248,13 +252,23 @@ ApplicationWindow {
                             height: 32
                             radius: 5
                             color: MainEngine.tool === modelData.id ? pal.accDim : toolHover.containsMouse ? pal.bg4 : "transparent"
-
-                            Text {
+                            Image {
+                                id: toolIcon
                                 anchors.centerIn: parent
-                                text: modelData.lbl
-                                color: MainEngine.tool === modelData.id ? pal.acc : pal.dim
-                                font.pixelSize: 11
-                                font.weight: Font.Medium
+                                source: modelData.icon
+                                width: 20
+                                height: 20
+                                sourceSize.width: 20
+                                sourceSize.height: 20
+                                visible: false
+                            }
+
+                            MultiEffect {
+                                anchors.fill: toolIcon
+                                source: toolIcon
+
+                                colorizationColor: MainEngine.tool === modelData.id ? pal.acc : pal.dim
+                                colorization: 1.0
                             }
 
                             HoverHandler {
@@ -396,62 +410,121 @@ ApplicationWindow {
                         }
                     }
 
-                    DrawingCanvas {
-                        id: mainCanvas
+                    Flickable {
+                        id: canvasContainer
                         anchors.fill: parent
+                        contentWidth: 1280 * canvasScale.xScale
+                        contentHeight: 720 * canvasScale.yScale
+                        boundsBehavior: Flickable.StopAtBounds
+                        clip: true
+                        interactive: false
 
-                        Connections {
-                            target: MainEngine
-                            function onFrameUpdated(img) {
-                                mainCanvas.updateImage(img);
-                            }
-                            function onColorPicked(hex) {
-                                MainEngine.color = hex;
-                            }
-                        }
+                        DrawingCanvas {
+                            id: mainCanvas
+                            width: 1280
+                            height: 720
 
-                        MouseArea {
-                            id: drawArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.BlankCursor
+                            x: Math.max(0, (canvasContainer.width - width * canvasScale.xScale) / 2)
+                            y: Math.max(0, (canvasContainer.height - height * canvasScale.yScale) / 2)
 
-                            function toCanvas(mx, my) {
-                                return Qt.point(mx / width * 1280, my / height * 720);
+                            transform: Scale {
+                                id: canvasScale
+                                origin.x: 640
+                                origin.y: 360
+                                xScale: 1.0
+                                yScale: 1.0
                             }
 
-                            onPressed: m => {
-                                var p = toCanvas(m.x, m.y);
-                                MainEngine.beginStroke(p.x, p.y);
-                            }
-                            onPositionChanged: m => {
-                                if (pressed) {
-                                    var p = toCanvas(m.x, m.y);
-                                    MainEngine.paintAt(p.x, p.y);
+                            Connections {
+                                target: MainEngine
+                                function onFrameUpdated(img) {
+                                    mainCanvas.updateImage(img);
+                                }
+                                function onColorPicked(hex) {
+                                    MainEngine.color = hex;
                                 }
                             }
-                            onReleased: MainEngine.endStroke()
-                            onExited: MainEngine.endStroke()
-                        }
 
-                        Rectangle {
-                            id: cursorCircle
-                            width: Math.max(4, MainEngine.brushSize * canvasFrame.width / 1280 * 2)
-                            height: width
-                            radius: width / 2
-                            color: "transparent"
-                            border.color: "white"
-                            border.width: 1
-                            opacity: drawArea.containsMouse ? 0.8 : 0
-                            visible: MainEngine.tool !== 3
+                            MouseArea {
+                                id: drawArea
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                                hoverEnabled: true
+                                cursorShape: (pressed && (pressedButtons & Qt.MiddleButton)) ? Qt.ClosedHandCursor : Qt.BlankCursor
+
+                                property real lastFlickX: 0
+                                property real lastFlickY: 0
+                                property point lastScenePos: Qt.point(0, 0)
+                                property point lastGlobalPos: Qt.point(0, 0)
+
+                                onPressed: mouse => {
+                                    if (mouse.button === Qt.MiddleButton) {
+                                        lastGlobalPos = mapToItem(null, mouse.x, mouse.y);
+                                    } else if (mouse.button === Qt.LeftButton) {
+                                        MainEngine.beginStroke(mouse.x, mouse.y);
+                                    }
+                                }
+
+                                onPositionChanged: mouse => {
+                                    if (mouse.buttons & Qt.MiddleButton) {
+                                        let currentGlobalPos = mapToItem(null, mouse.x, mouse.y);
+
+                                        let dx = currentGlobalPos.x - lastGlobalPos.x;
+                                        let dy = currentGlobalPos.y - lastGlobalPos.y;
+
+                                        canvasContainer.contentX -= dx;
+                                        canvasContainer.contentY -= dy;
+
+                                        lastGlobalPos = currentGlobalPos;
+                                    } else if (mouse.buttons & Qt.LeftButton) {
+                                        MainEngine.paintAt(mouse.x, mouse.y);
+                                    }
+                                }
+
+                                onReleased: mouse => {
+                                    if (mouse.button === Qt.LeftButton)
+                                        MainEngine.endStroke();
+                                }
+
+                                onWheel: wheel => {
+                                    let screenX = wheel.x;
+                                    let screenY = wheel.y;
+                                    let canvasX = (canvasContainer.contentX + screenX) / canvasScale.xScale;
+                                    let canvasY = (canvasContainer.contentY + screenY) / canvasScale.yScale;
+                                    let zoomFactor = 1.1;
+                                    if (wheel.angleDelta.y > 0) {
+                                        canvasScale.xScale *= zoomFactor;
+                                        canvasScale.yScale *= zoomFactor;
+                                    } else {
+                                        canvasScale.xScale /= zoomFactor;
+                                        canvasScale.yScale /= zoomFactor;
+                                    }
+                                    canvasContainer.contentX = (canvasX * canvasScale.xScale) - screenX;
+                                    canvasContainer.contentY = (canvasY * canvasScale.yScale) - screenY;
+                                }
+
+                                onExited: MainEngine.endStroke()
+                            }
 
                             Rectangle {
-                                anchors.centerIn: parent
-                                width: 3
-                                height: 3
-                                radius: 2
-                                color: "white"
-                                opacity: .9
+                                id: cursorCircle
+                                width: Math.max(4, MainEngine.brushSize * canvasFrame.width / 1280 * 2)
+                                height: width
+                                radius: width / 2
+                                color: "transparent"
+                                border.color: "white"
+                                border.width: 1
+                                opacity: drawArea.containsMouse ? 0.8 : 0
+                                visible: MainEngine.tool !== 3
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 3
+                                    height: 3
+                                    radius: 2
+                                    color: "white"
+                                    opacity: .9
+                                }
                             }
                         }
                     }
@@ -532,11 +605,22 @@ ApplicationWindow {
                             radius: 4
                             color: TL.playing ? pal.acc : pal.bg3
 
-                            Text {
+                            Image {
+                                id: playpauseicon
                                 anchors.centerIn: parent
-                                text: TL.playing ? "  ‖  " : "  ▶  "
-                                color: TL.playing ? "white" : pal.text
-                                font.pixelSize: 13
+                                source: TL.playing ? "assets/icons/pause.svg" : "assets/icons/play.svg"
+
+                                MultiEffect {
+                                    source: playpauseicon
+                                    anchors.fill: playpauseicon
+
+                                    colorization: 1.0
+
+                                    colorizationColor: TL.playing ? "black" : "white"
+
+                                    brightness: 0.1
+                                    contrast: 0.2
+                                }
                             }
                             TapHandler {
                                 onTapped: TL.togglePlay()
@@ -548,11 +632,9 @@ ApplicationWindow {
                             height: 26
                             radius: 4
                             color: pal.bg3
-                            Text {
+                            Image {
                                 anchors.centerIn: parent
-                                text: "■"
-                                color: pal.dim
-                                font.pixelSize: 11
+                                source: "assets/icons/stop.svg"
                             }
                             TapHandler {
                                 onTapped: TL.stop()
@@ -564,11 +646,9 @@ ApplicationWindow {
                             height: 26
                             radius: 4
                             color: pal.bg3
-                            Text {
+                            Image {
                                 anchors.centerIn: parent
-                                text: "◀"
-                                color: pal.dim
-                                font.pixelSize: 10
+                                source: "assets/icons/arrowback.svg"
                             }
                             TapHandler {
                                 onTapped: TL.prev()
@@ -579,11 +659,9 @@ ApplicationWindow {
                             height: 26
                             radius: 4
                             color: pal.bg3
-                            Text {
+                            Image {
                                 anchors.centerIn: parent
-                                text: "▶"
-                                color: pal.dim
-                                font.pixelSize: 10
+                                source: "assets/icons/play.svg"
                             }
                             TapHandler {
                                 onTapped: TL.next()
@@ -918,10 +996,10 @@ ApplicationWindow {
                             }
 
                             Text {
-                                text: Math.round(smoothSlider.value * 100) + "%"
-                                color: "white"
+                                text: Math.round(canvasScale.xScale * 100) + "%"
+                                color: pal.text
                                 font.pixelSize: 11
-                                width: 30
+                                font.bold: true
                             }
                         }
                     }

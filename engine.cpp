@@ -43,6 +43,14 @@ void Engine::endStroke() {
 void Engine::paintAt(qreal x, qreal y) {
     if (m_tool == Eyedropper) { pickColor(x, y); return; }
 
+    float oobDist = std::sqrt(std::pow(x - m_lastX, 2) + std::pow(y - m_lastY, 2));
+
+    if (m_lastX < 0 || m_lastY < 0 || oobDist > 400) {
+        m_lastX = x;
+        m_lastY = y;
+        m_smoothPos = QPointF(x, y);
+    }
+
     QImage& img = m_timeline.currentImage();
     QPainter p(&img);
 
@@ -157,7 +165,8 @@ QImage Engine::compositeFrame() const {
 
     int ci = m_timeline.currentFrame();
 
-    if (m_timeline.onionBack()) {
+    bool showOnion = !m_timeline.playing();
+    if (showOnion && m_timeline.onionBack()) {
         for (int d = 2; d >= 1; d--) {
             QImage ghost = m_timeline.imageAt(ci - d);
             if (ghost.isNull()) continue;
@@ -168,7 +177,7 @@ QImage Engine::compositeFrame() const {
         }
     }
 
-    if (m_timeline.onionForward()) {
+    if (showOnion && m_timeline.onionForward()) {
         QImage ghost = m_timeline.imageAt(ci + 1);
         if (!ghost.isNull()) {
             p.setOpacity(m_timeline.onionAlpha());
@@ -178,6 +187,7 @@ QImage Engine::compositeFrame() const {
 
     p.setOpacity(1.0);
     p.drawImage(0, 0, cur);
+
     return out;
 }
 

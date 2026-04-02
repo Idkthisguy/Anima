@@ -30,6 +30,12 @@ qt_add_qml_module(appAnima_Pro
         assets/icons/play.svg
         assets/icons/stop.svg
         assets/icons/icon.png
+        assets/icons/pause.svg
+        assets/icons/arrowback.svg
+        assets/icons/colorpicker.svg
+        assets/icons/brush.svg
+        assets/icons/eraser.svg
+        assets/icons/bucket.svg
         RESOURCES README.md
         RESOURCES .gitignore
         RESOURCES
@@ -39,6 +45,7 @@ qt_add_qml_module(appAnima_Pro
         LICENSE.txt
         SOURCES timeline.h timeline.cpp
         RESOURCES CHANGELOG.md
+        RESOURCES
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
