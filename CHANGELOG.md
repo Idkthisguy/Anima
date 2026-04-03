@@ -19,7 +19,7 @@
 ## What’s Gone?
 **The old v1 files:** You can find them somewhere in this repo I guess..?
 
-🛠️ A Note from the Creator (Me :D)
+A Note from the Creator (Me :D)
 I'm using this version to learn how to code in C++. It might have some bugs (it's a massive change!), so if it crashes, just let me know in the [Issues](https://github.com/Idkthisguy/Anima/issues) tab.
 
 Next up: Linux support and hopefully a mobile port!
