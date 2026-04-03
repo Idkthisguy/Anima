@@ -20,6 +20,8 @@ And here's what got benefited:
 * **Dual-Format Save System:** Support for high-speed binary .anx files and legacy JSON-based .anima files. (HOLY SH## BACKWARDS COMPATIBILITY)
 * **Native Performance:** Barely lags on low-end hardware (maybe you can run this on a potato?)
 
+More release notes in the [Changelog](https://github.com/Idkthisguy/Anima/blob/anima-v2/CHANGELOG.md).
+
 ## Key Features (so far)
 * Lightweight executable for saving your storage space
 * Boosted performance C++ instead of ElectronJS
