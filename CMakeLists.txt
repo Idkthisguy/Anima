@@ -22,8 +22,7 @@ qt_add_executable(appAnima_Pro
 qt_add_qml_module(appAnima_Pro
     URI Anima_Pro
     QML_FILES
-    Main.qml
-
+        Main.qml
     RESOURCES
         assets/icons/play.svg
         assets/icons/stop.svg
@@ -36,17 +35,12 @@ qt_add_qml_module(appAnima_Pro
         assets/icons/bucket.svg
         assets/icons/undo.svg
         assets/icons/redo.svg
-        RESOURCES README.md
-        RESOURCES .gitignore
-        RESOURCES
-        SOURCES engine.h engine.cpp
-        SOURCES Frames.h
-        SOURCES canvasprovider.h canvasprovider.cpp
-        LICENSE.txt
-        SOURCES timeline.h timeline.cpp
-        SOURCES fileio.h fileio.cpp
-        RESOURCES CHANGELOG.md
-        RESOURCES
+    SOURCES
+        engine.h engine.cpp
+        Frames.h
+        canvasprovider.h canvasprovider.cpp
+        timeline.h timeline.cpp
+        fileio.h fileio.cpp
 )
 
 set_target_properties(appAnima_Pro PROPERTIES
