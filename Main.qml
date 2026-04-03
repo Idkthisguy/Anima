@@ -298,11 +298,13 @@ ApplicationWindow {
                     model: [
                         {
                             lbl: "Un",
-                            tip: "Undo  Ctrl+Z"
+                            tip: "Undo  Ctrl+Z",
+                            icon: "assets/icons/undo.svg"
                         },
                         {
                             lbl: "Re",
-                            tip: "Redo  Ctrl+Y"
+                            tip: "Redo  Ctrl+Y",
+                            icon: "assets/icons/redo.svg"
                         }
                     ]
                     delegate: Rectangle {
@@ -313,12 +315,25 @@ ApplicationWindow {
                         color: urHover.containsMouse ? pal.bg4 : "transparent"
                         required property var modelData
 
-                        Text {
+                        Image {
+                            id: utilIcon
                             anchors.centerIn: parent
-                            text: modelData.lbl
-                            color: pal.dim
-                            font.pixelSize: 11
+                            source: modelData.icon
+                            width: 20
+                            height: 20
+                            sourceSize.width: 20
+                            sourceSize.height: 20
+                            visible: false
                         }
+
+                        MultiEffect {
+                            anchors.fill: utilIcon
+                            source: utilIcon
+
+                            colorizationColor: MainEngine.tool === modelData.id ? pal.acc : pal.dim
+                            colorization: 1.0
+                        }
+
                         HoverHandler {
                             id: urHover
                         }

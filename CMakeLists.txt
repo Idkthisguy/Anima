@@ -36,6 +36,8 @@ qt_add_qml_module(appAnima_Pro
         assets/icons/brush.svg
         assets/icons/eraser.svg
         assets/icons/bucket.svg
+        assets/icons/undo.svg
+        assets/icons/redo.svg
         RESOURCES README.md
         RESOURCES .gitignore
         RESOURCES
