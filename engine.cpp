@@ -7,6 +7,7 @@
 Engine::Engine(QObject* parent) : QObject(parent) {
     connect(&m_timeline, &Timeline::imageChanged, this, [this]{
         emit frameUpdated(compositeFrame());
+        m_fileio.markDirty();
     });
 
     m_tickTimer.setInterval(16);
@@ -197,6 +198,8 @@ void Engine::terminateAnima(int returnCode) {
 
 void Engine::newProject() {
     m_timeline.clearAll();
+    m_fileio.setPath("");
+    m_fileio.markClean();
     emit frameUpdated(compositeFrame());
 }
 
@@ -205,4 +208,43 @@ void Engine::setSmoothing(float v) {
         m_smoothing = v;
         emit smoothingChanged();
     }
+}
+
+bool Engine::saveProject(const QString& path) {
+    AnimaProject proj;
+    proj.fps = 12;
+
+    for(int i = 0; i < m_timeline.frameCount(); ++i) {
+        proj.frames.append(m_timeline.imageAt(i));
+    }
+
+    if (!proj.frames.isEmpty()) {
+        proj.width = proj.frames.first().width();
+        proj.height = proj.frames.first().height();
+    }
+
+    return m_fileio.saveAs(proj, path);
+}
+
+bool Engine::openProject(const QString& path) {
+    AnimaProject proj = m_fileio.open(path);
+    if (proj.frames.isEmpty()) return false;
+
+    m_timeline.clearAll();
+
+    m_timeline.deleteFrame(0);
+
+    for (const QImage& img : proj.frames) {
+        m_timeline.addFrame();
+        m_timeline.currentImage() = img;
+        m_timeline.next();
+    }
+
+    m_timeline.goTo(0);
+    m_timeline.setFps(proj.fps);
+    m_fileio.setPath(path);
+    m_fileio.markClean();
+
+    emit projectLoaded();
+    return true;
 }

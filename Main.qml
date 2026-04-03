@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Dialogs
 import Anima.Backend
 import Anima.Components 1.0
 
@@ -12,7 +13,14 @@ ApplicationWindow {
     minimumWidth: 900
     minimumHeight: 600
     visible: true
-    title: "Anima  v2.0"
+    title: {
+        var base = "Anima  v2.0";
+        if (IO.currentPath !== "") {
+            var parts = IO.currentPath.replace(/\\/g, "/").split("/");
+            base += "  -  " + parts[parts.length - 1];
+        }
+        return (IO.isDirty ? "* " : "") + base;
+    }
     color: "#0d0d0f"
 
     Shortcut {
@@ -63,6 +71,18 @@ ApplicationWindow {
         sequence: "O"
         onActivated: TL.toggleOnionSkin()
     }
+    Shortcut {
+        sequence: "Ctrl+O"
+        onActivated: openFileDlg.open()
+    }
+    Shortcut {
+        sequence: "Ctrl+S"
+        onActivated: doSave()
+    }
+    Shortcut {
+        sequence: "Ctrl+Shift+S"
+        onActivated: saveFileDlg.open()
+    }
 
     QtObject {
         id: pal
@@ -78,6 +98,22 @@ ApplicationWindow {
         readonly property color dim: "#606068"
         readonly property color red: "#e05252"
         readonly property color blue: "#5280e0"
+    }
+
+    function doSave() {
+        if (IO.currentPath === "")
+            saveFileDlg.open();
+        else
+            MainEngine.saveProject(IO.currentPath);
+    }
+
+    function urlToPath(url) {
+        var s = url.toString();
+        if (s.startsWith("file:///") && Qt.platform.os === "windows")
+            return s.slice(8).replace(/\//g, "\\");
+        if (s.startsWith("file://"))
+            return s.slice(7);
+        return s;
     }
 
     menuBar: MenuBar {
@@ -105,27 +141,30 @@ ApplicationWindow {
             Action {
                 text: "New Project"
                 shortcut: "Ctrl+N"
-                onTriggered: MainEngine.newProject()
+                onTriggered: confirmNewDlg.open()
             }
             Action {
                 text: "Open…"
                 shortcut: "Ctrl+O"
+                onTriggered: openFileDlg.open()
             }
             MenuSeparator {}
             Action {
                 text: "Save"
                 shortcut: "Ctrl+S"
+                onTriggered: doSave()
             }
             Action {
                 text: "Save As…"
                 shortcut: "Ctrl+Shift+S"
+                onTriggered: saveFileDlg.open()
             }
             MenuSeparator {}
             Action {
-                text: "Export GIF"
+                text: "Export GIF (COMING SOON)"
             }
             Action {
-                text: "Export MP4"
+                text: "Export MP4 (COMING SOON)"
             }
             MenuSeparator {}
             Action {
@@ -173,6 +212,243 @@ ApplicationWindow {
                 text: "Add Frame"
                 shortcut: "Ctrl+J"
                 onTriggered: TL.addFrame()
+            }
+        }
+    }
+
+    FileDialog {
+        id: openFileDlg
+        title: "Open Project"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Anima v2 (*.anx)", "Anima v1 (*.anima)", "All Anima files (*.anx *.anima)"]
+        onAccepted: {
+            var path = urlToPath(selectedFile);
+            if (!MainEngine.openProject(path))
+                errToast.show("Failed to open file: " + path);
+        }
+    }
+
+    FileDialog {
+        id: saveFileDlg
+        title: "Save Project"
+        fileMode: FileDialog.SaveFile
+
+        nameFilters: ["Anima v2 Project (*.anx)", "Anima v1 Legacy (*.anima)", "All Files (*)"]
+
+        onAccepted: {
+            let path = selectedFile.toString();
+
+            path = path.replace(/^(file:\/{3})|(file:)/, "");
+
+            MainEngine.saveProject(path);
+        }
+    }
+
+    FileDialog {
+        id: saveAnimaDlg
+        title: "Save as .anima (legacy)"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["Anima v1 (*.anima)"]
+        defaultSuffix: "anima"
+        onAccepted: {
+            var path = urlToPath(selectedFile);
+            if (!path.endsWith(".anima"))
+                path += ".anima";
+            if (!MainEngine.saveProject(path))
+                errToast.show("Failed to save: " + path);
+        }
+    }
+
+    Dialog {
+        id: confirmNewDlg
+        title: "New Project"
+        anchors.centerIn: parent
+        modal: true
+        width: 320
+        background: Rectangle {
+            color: pal.bg2
+            border.color: pal.border
+            radius: 8
+        }
+        header: null
+
+        ColumnLayout {
+            anchors {
+                fill: parent
+                margins: 20
+            }
+            spacing: 16
+
+            Text {
+                text: "New Project"
+                color: pal.text
+                font.pixelSize: 14
+                font.weight: Font.SemiBold
+            }
+            Text {
+                text: IO.isDirty ? "You have unsaved changes.\nCreate a new project anyway?" : "Create a new project?"
+                color: pal.dim
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Item {
+                    Layout.fillWidth: true
+                }
+                Rectangle {
+                    width: 72
+                    height: 28
+                    radius: 5
+                    color: pal.bg4
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Cancel"
+                        color: pal.text
+                        font.pixelSize: 12
+                    }
+                    TapHandler {
+                        onTapped: confirmNewDlg.close()
+                    }
+                }
+                Item {
+                    width: 8
+                }
+                Rectangle {
+                    width: 72
+                    height: 28
+                    radius: 5
+                    color: pal.acc
+                    Text {
+                        anchors.centerIn: parent
+                        text: "New"
+                        color: "white"
+                        font.pixelSize: 12
+                    }
+                    TapHandler {
+                        onTapped: {
+                            MainEngine.newProject();
+                            confirmNewDlg.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: errToast
+        anchors {
+            bottom: parent.bottom
+            horizontalCenter: parent.horizontalCenter
+            bottomMargin: 24
+        }
+        width: errMsg.implicitWidth + 32
+        height: 36
+        radius: 8
+        color: "#c0392b"
+        opacity: 0
+        z: 999
+
+        function show(msg) {
+            errMsg.text = msg;
+            showAnim.restart();
+        }
+
+        Text {
+            id: errMsg
+            anchors.centerIn: parent
+            color: "white"
+            font.pixelSize: 12
+        }
+
+        SequentialAnimation {
+            id: showAnim
+            NumberAnimation {
+                target: errToast
+                property: "opacity"
+                to: 1
+                duration: 150
+            }
+            PauseAnimation {
+                duration: 3000
+            }
+            NumberAnimation {
+                target: errToast
+                property: "opacity"
+                to: 0
+                duration: 300
+            }
+        }
+    }
+
+    Rectangle {
+        id: saveToast
+        anchors {
+            bottom: parent.bottom
+            horizontalCenter: parent.horizontalCenter
+            bottomMargin: 24
+        }
+        width: saveMsg.implicitWidth + 32
+        height: 36
+        radius: 8
+        color: "#27ae60"
+        opacity: 0
+        z: 999
+
+        function show(msg) {
+            saveMsg.text = msg;
+            saveShowAnim.restart();
+        }
+
+        Text {
+            id: saveMsg
+            anchors.centerIn: parent
+            color: "white"
+            font.pixelSize: 12
+        }
+
+        SequentialAnimation {
+            id: saveShowAnim
+            NumberAnimation {
+                target: saveToast
+                property: "opacity"
+                to: 1
+                duration: 150
+            }
+            PauseAnimation {
+                duration: 2000
+            }
+            NumberAnimation {
+                target: saveToast
+                property: "opacity"
+                to: 0
+                duration: 300
+            }
+        }
+    }
+
+    Connections {
+        target: IO
+        function onErrorOccurred(msg) {
+            errToast.show(msg);
+        }
+        function onCurrentPathChanged() {
+            if (IO.currentPath !== "") {
+                var parts = IO.currentPath.replace(/\\/g, "/").split("/");
+                saveToast.show("Saved: " + parts[parts.length - 1]);
+            }
+        }
+    }
+
+    Connections {
+        target: MainEngine
+        function onProjectLoaded() {
+            if (IO.currentPath !== "") {
+                var parts = IO.currentPath.replace(/\\/g, "/").split("/");
+                saveToast.show("Opened: " + parts[parts.length - 1]);
             }
         }
     }
@@ -1042,6 +1318,48 @@ ApplicationWindow {
                                 label: "Clear"
                                 danger: true
                                 onClicked: TL.clearFrame()
+                            }
+                        }
+                    }
+
+                    PropSection {
+                        title: "FILE"
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 6
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 18
+                                color: "transparent"
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: IO.isDirty ? "unsaved changes" : "saved"
+                                    color: IO.isDirty ? pal.red : pal.dim
+                                    font.pixelSize: 10
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                height: 28
+                                radius: 4
+                                color: pal.bg3
+                                clip: true
+                                Text {
+                                    anchors {
+                                        left: parent.left
+                                        verticalCenter: parent.verticalCenter
+                                        leftMargin: 6
+                                        right: parent.right
+                                        rightMargin: 6
+                                    }
+                                    text: IO.currentPath !== "" ? IO.currentPath : "no file"
+                                    color: pal.dim
+                                    font.pixelSize: 9
+                                    font.family: "Courier New"
+                                    elide: Text.ElideLeft
+                                }
                             }
                         }
                     }
