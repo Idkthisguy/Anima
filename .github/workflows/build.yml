@@ -28,7 +28,10 @@ jobs:
           arch: 'win64_mingw'
 
       - name: Configure CMake
-        run: cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+        run: |
+                cmake -B build -G "MinGW Makefiles" `
+                -DCMAKE_BUILD_TYPE=Release `
+                -DCMAKE_EXE_LINKER_FLAGS="-static -static-libgcc -static-libstdc++"
 
       - name: Build Project
         run: cmake --build build --config Release

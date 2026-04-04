@@ -12,6 +12,7 @@ if(WIN32)
 endif()
 
 qt_add_executable(appAnima_Pro
+    WIN32
     main.cpp
     engine.cpp
     canvasprovider.cpp
