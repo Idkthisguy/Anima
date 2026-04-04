@@ -16,11 +16,13 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
+    #strategy:
+      #matrix:
+        #os: [windows-latest, ubuntu-latest]
 
-    runs-on: ${{ matrix.os }}
+    #runs-on: ${{ matrix.os }}
+
+    runs-on: windows-latest
 
     steps:
       - name: Checkout Code
@@ -28,19 +30,22 @@ jobs:
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
+        #with:
+            #version: '6.5.3'
+            #arch: ${{ matrix.os == 'windows-latest' && 'win64_msvc2019_64' || 'gcc_64' }}
         with:
-            version: '6.5.3'
-            arch: ${{ matrix.os == 'windows-latest' && 'win64_msvc2019_64' || 'gcc_64' }}
+            version: '6.8.3'
+            arch: 'win64_msvc2022_64'
 
       - name: Setup MSVC (Windows Only)
-        if: matrix.os == 'windows-latest'
+        #if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Install Linux Deps
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0
+     # - name: Install Linux Deps
+       # if: matrix.os == 'ubuntu-latest'
+        #run: |
+         # sudo apt-get update
+         # sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -57,13 +62,13 @@ jobs:
         with:
           type: 'zip'
           directory: ${{ matrix.os == 'windows-latest' && 'build/Release' || 'build' }}
-          filename: Anima-v2-${{ matrix.os }}.zip
+          filename: Anima-v2.zip
 
-      - name: Save Private Test Build
-        uses: actions/upload-artifact@v4
-        with:
-          name: Private-Testing-Build-${{ matrix.os }}
-          path: "**/*.zip"
+      #- name: Save Private Test Build
+        #uses: actions/upload-artifact@v4
+        #with:
+         # name: Private-Testing-Build-${{ matrix.os }}
+          #path: "**/*.zip"
 
       - name: Create Official Release
         if: github.event_name == 'workflow_dispatch'
