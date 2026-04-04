@@ -21,38 +21,39 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Qt
+      - name: Install Qt (MSVC Native)
         uses: jurplel/install-qt-action@v3
         with:
           version: '6.8.3'
-          arch: 'win64_mingw'
+          arch: 'win64_msvc2019_64'
+
+      - name: Setup MSVC Compiler
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: Configure CMake
         run: |
-            cmake -B build -G "MinGW Makefiles" `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_CXX_FLAGS="-D_GNU_SOURCE" `
-            -DCMAKE_EXE_LINKER_FLAGS="-Wl,--allow-multiple-definition -static -static-libgcc -static-libstdc++"
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Project
         run: cmake --build build --config Release
 
       - name: Bundle DLLs
         run: |
-          windeployqt --qmldir . build/appAnima_Pro.exe
+          windeployqt --qmldir . build/Release/appAnima_Pro.exe
+          # MSVC puts the .exe inside a Release folder, so we updated the path here!
 
       - name: Create ZIP
         uses: thedoctor0/zip-release@main
         with:
           type: 'zip'
-          directory: 'build'
+          directory: 'build/Release'
           filename: 'Anima-v2.zip'
 
       - name: Save Private Test Build
         uses: actions/upload-artifact@v4
         with:
           name: Private-Testing-Build
-          path: build/Anima-v2.zip
+          path: build/Release/Anima-v2.zip
 
       - name: Create Official Release
         if: github.event_name == 'workflow_dispatch'
@@ -62,6 +63,6 @@ jobs:
           name: Anima ${{ github.event.inputs.release_name }}
           body_path: CHANGELOG.md
           prerelease: ${{ github.event.inputs.is_prerelease }}
-          files: build/Anima-v2.zip
+          files: build/Release/Anima-v2.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
