@@ -5,6 +5,9 @@
 #include "canvasprovider.h"
 
 int main(int argc, char* argv[]) {
+    QQuickStyle::setStyle("Material");
+    qputenv("QT_QUICK_CONTROLS_MATERIAL_THEME", "Dark");
+
     QGuiApplication app(argc, argv);
     app.setApplicationName("Anima");
     app.setApplicationVersion("2.0");
