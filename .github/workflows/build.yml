@@ -39,7 +39,7 @@ jobs:
 
       - name: Bundle DLLs
         run: |
-          windeployqt --qmldir . build/Release/appAnima_Pro.exe
+          windeployqt --qmldir . build/Release/Anima.exe
           # MSVC puts the .exe inside a Release folder, so we updated the path here!
 
       - name: Create ZIP
