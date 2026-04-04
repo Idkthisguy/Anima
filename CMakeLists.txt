@@ -22,6 +22,7 @@ qt_add_executable(appAnima_Pro
 
 qt_add_qml_module(appAnima_Pro
     URI Anima_Pro
+    VERSION 2.0
     QML_FILES
         Main.qml
     RESOURCES
