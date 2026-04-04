@@ -2,10 +2,12 @@
 #include <QStack>
 #include <QPoint>
 #include <cmath>
+#include <QCoreApplication>
 
 Engine::Engine(QObject* parent) : QObject(parent) {
     connect(&m_timeline, &Timeline::imageChanged, this, [this]{
         emit frameUpdated(compositeFrame());
+        m_fileio.markDirty();
     });
 
     m_tickTimer.setInterval(16);
@@ -26,7 +28,11 @@ void Engine::setColor(const QString& h) {
 void Engine::beginStroke(qreal x, qreal y) {
     m_timeline.pushUndo();
     m_inStroke = true;
-    m_lastX = x; m_lastY = y;
+
+    m_smoothPos = QPointF(x, y);
+    m_lastX = x;
+    m_lastY = y;
+
     paintAt(x, y);
 }
 
@@ -38,8 +44,21 @@ void Engine::endStroke() {
 void Engine::paintAt(qreal x, qreal y) {
     if (m_tool == Eyedropper) { pickColor(x, y); return; }
 
+    float oobDist = std::sqrt(std::pow(x - m_lastX, 2) + std::pow(y - m_lastY, 2));
+
+    if (m_lastX < 0 || m_lastY < 0 || oobDist > 400) {
+        m_lastX = x;
+        m_lastY = y;
+        m_smoothPos = QPointF(x, y);
+    }
+
     QImage& img = m_timeline.currentImage();
     QPainter p(&img);
+
+    float weight = 1.0f - m_smoothing;
+
+    m_smoothPos.setX(m_smoothPos.x() + (x - m_smoothPos.x()) * weight);
+    m_smoothPos.setY(m_smoothPos.y() + (y - m_smoothPos.y()) * weight);
 
     p.setRenderHint(QPainter::Antialiasing);
     p.setRenderHint(QPainter::SmoothPixmapTransform);
@@ -60,9 +79,11 @@ void Engine::paintAt(qreal x, qreal y) {
 
     p.setPen(pen);
 
-    p.drawLine(QPointF(m_lastX, m_lastY), QPointF(x, y));
+    p.drawLine(QPointF(m_lastX, m_lastY), m_smoothPos);
 
-    m_lastX = x; m_lastY = y;
+    m_lastX = m_smoothPos.x();
+    m_lastY = m_smoothPos.y();
+
     emit m_timeline.imageChanged();
 }
 
@@ -145,7 +166,8 @@ QImage Engine::compositeFrame() const {
 
     int ci = m_timeline.currentFrame();
 
-    if (m_timeline.onionBack()) {
+    bool showOnion = !m_timeline.playing();
+    if (showOnion && m_timeline.onionBack()) {
         for (int d = 2; d >= 1; d--) {
             QImage ghost = m_timeline.imageAt(ci - d);
             if (ghost.isNull()) continue;
@@ -156,7 +178,7 @@ QImage Engine::compositeFrame() const {
         }
     }
 
-    if (m_timeline.onionForward()) {
+    if (showOnion && m_timeline.onionForward()) {
         QImage ghost = m_timeline.imageAt(ci + 1);
         if (!ghost.isNull()) {
             p.setOpacity(m_timeline.onionAlpha());
@@ -166,5 +188,63 @@ QImage Engine::compositeFrame() const {
 
     p.setOpacity(1.0);
     p.drawImage(0, 0, cur);
+
     return out;
+}
+
+void Engine::terminateAnima(int returnCode) {
+    QCoreApplication::exit(returnCode);
+}
+
+void Engine::newProject() {
+    m_timeline.clearAll();
+    m_fileio.setPath("");
+    m_fileio.markClean();
+    emit frameUpdated(compositeFrame());
+}
+
+void Engine::setSmoothing(float v) {
+    if (m_smoothing != v) {
+        m_smoothing = v;
+        emit smoothingChanged();
+    }
+}
+
+bool Engine::saveProject(const QString& path) {
+    AnimaProject proj;
+    proj.fps = 12;
+
+    for(int i = 0; i < m_timeline.frameCount(); ++i) {
+        proj.frames.append(m_timeline.imageAt(i));
+    }
+
+    if (!proj.frames.isEmpty()) {
+        proj.width = proj.frames.first().width();
+        proj.height = proj.frames.first().height();
+    }
+
+    return m_fileio.saveAs(proj, path);
+}
+
+bool Engine::openProject(const QString& path) {
+    AnimaProject proj = m_fileio.open(path);
+    if (proj.frames.isEmpty()) return false;
+
+    m_timeline.clearAll();
+
+    m_timeline.deleteFrame(0);
+
+    for (const QImage& img : proj.frames) {
+        m_timeline.addFrame();
+        m_timeline.currentImage() = img;
+        m_timeline.next();
+    }
+
+    m_timeline.goTo(0);
+    m_timeline.setFps(proj.fps);
+    m_fileio.setPath(path);
+    m_fileio.markClean();
+
+    emit projectLoaded();
+    return true;
 }

@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 #include "Frames.h"
+#include <QFile>
+#include <QDataStream>
 
 class Timeline : public QObject {
     Q_OBJECT
@@ -34,6 +36,9 @@ public:
     void setOnionBack(bool v);
     void setOnionForward(bool v);
     void setOnionAlpha(float v);
+    void clearAll();
+    void saveProject(const QString &filePath);
+    void loadProject(const QString &filePath);
 
     QImage& currentImage();
     QImage  imageAt(int index) const;
@@ -54,6 +59,7 @@ public slots:
     void undo();
     void redo();
     void clearFrame();
+    void toggleOnionSkin();
 
 signals:
     void currentFrameChanged();

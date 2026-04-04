@@ -123,3 +123,78 @@ void Timeline::clearFrame() {
     m_frames[m_current]->image.fill(Qt::transparent);
     emit imageChanged();
 }
+
+void Timeline::clearAll() {
+    m_frames.clear();
+    m_undoStack.clear();
+    m_redoStack.clear();
+    m_current = 0;
+    addFrame();
+    emit currentFrameChanged();
+    emit frameCountChanged();
+    emit imageChanged();
+}
+
+void Timeline::toggleOnionSkin() {
+    setOnionBack(!m_onionBack);
+    setOnionForward(!m_onionForward);
+    emit imageChanged();
+}
+
+void Timeline::saveProject(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) return;
+
+    QDataStream out(&file);
+    out << (quint32)0x414E4D41;
+    out << (int)1;
+
+    out << m_fps << m_looping << m_onionBack << m_onionForward << m_onionAlpha;
+
+    out << (int)m_frames.size();
+    for (const auto& frame : m_frames) {
+        out << frame->image;
+    }
+
+    file.close();
+}
+
+void Timeline::loadProject(const QString &filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) return;
+
+    QDataStream in(&file);
+
+    quint32 magic;
+    in >> magic;
+    if (magic != 0x414E4D41) return;
+
+    int version;
+    in >> version;
+
+    int newFps; bool newLoop;
+    in >> newFps >> newLoop >> m_onionBack >> m_onionForward >> m_onionAlpha;
+    setFps(newFps);
+    setLooping(newLoop);
+
+    m_frames.clear();
+    m_undoStack.clear();
+    m_redoStack.clear();
+
+    int count;
+    in >> count;
+    for (int i = 0; i < count; ++i) {
+        QImage loadedImg;
+        in >> loadedImg;
+        auto frame = std::make_unique<Anima::Frame>(CANVAS_W, CANVAS_H);
+        frame->image = loadedImg;
+        m_frames.push_back(std::move(frame));
+    }
+
+    file.close();
+
+    m_current = 0;
+    emit frameCountChanged();
+    emit currentFrameChanged();
+    emit imageChanged();
+}
