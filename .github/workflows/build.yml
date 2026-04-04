@@ -57,21 +57,21 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Bundle Windows
-        if: matrix.os == 'windows-latest'
+        #if: matrix.os == 'windows-latest'
         run: windeployqt --qmldir . build/Release/Anima.exe
 
       - name: Create ZIP
         uses: thedoctor0/zip-release@main
         with:
           type: 'zip'
-          directory: ${{ matrix.os == 'windows-latest' && 'build/Release' || 'build' }}
+          directory: 'build/Release'
           filename: Anima-v2.zip
 
-      #- name: Save Private Test Build
-        #uses: actions/upload-artifact@v4
-        #with:
-         # name: Private-Testing-Build-${{ matrix.os }}
-          #path: "**/*.zip"
+      - name: Save Private Test Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: Testing-Build
+          path: "**/*.zip"
 
       - name: Create Official Release
         if: github.event_name == 'workflow_dispatch'
