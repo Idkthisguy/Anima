@@ -29,8 +29,8 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
-          version: '6.8.2'
-          arch: ${{ matrix.os == 'windows-latest' && 'win64_msvc2022_64' || 'gcc_64' }}
+            version: '6.5.3'
+            arch: ${{ matrix.os == 'windows-latest' && 'win64_msvc2019_64' || 'gcc_64' }}
 
       - name: Setup MSVC (Windows Only)
         if: matrix.os == 'windows-latest'
