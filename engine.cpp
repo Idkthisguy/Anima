@@ -20,9 +20,14 @@ Engine::Engine(QObject* parent) : QObject(parent) {
 void Engine::setTool(int v)          { if (m_tool != v)      { m_tool = v;      emit toolChanged(); } }
 void Engine::setBrushSize(int v)     { if (m_brushSize != v) { m_brushSize = v; emit brushSizeChanged(); } }
 void Engine::setOpacity(float v)     { if (m_opacity != v)   { m_opacity = v;   emit opacityChanged(); } }
-void Engine::setColor(const QString& h) {
-    QColor c(h);
-    if (c.isValid() && c != m_color) { m_color = c; emit colorChanged(); }
+void Engine::setColor(const QString& hex) {
+    QColor newColor(hex);
+    if (m_color == newColor) {
+        return;
+    }
+
+    m_color = newColor;
+    emit colorChanged();
 }
 
 void Engine::beginStroke(qreal x, qreal y) {
