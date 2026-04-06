@@ -32,25 +32,25 @@ Rectangle {
                     lbl: "Br",
                     tip: "Brush (B)",
                     id: 0,
-                    icon: "../assets/icons/brush.svg"
+                    icon: "../../assets/icons/brush.svg"
                 },
                 {
                     lbl: "Er",
                     tip: "Eraser (E)",
                     id: 1,
-                    icon: "../assets/icons/eraser.svg"
+                    icon: "../../assets/icons/eraser.svg"
                 },
                 {
                     lbl: "Bk",
                     tip: "Bucket (G)",
                     id: 2,
-                    icon: "../assets/icons/bucket.svg"
+                    icon: "../../assets/icons/bucket.svg"
                 },
                 {
                     lbl: "Ey",
                     tip: "Eyedrop (I)",
                     id: 3,
-                    icon: "../assets/icons/colorpicker.svg"
+                    icon: "../../assets/icons/colorpicker.svg"
                 }
             ]
 
@@ -121,12 +121,12 @@ Rectangle {
                 {
                     lbl: "Un",
                     tip: "Undo  Ctrl+Z",
-                    icon: "../assets/icons/undo.svg"
+                    icon: "../../assets/icons/undo.svg"
                 },
                 {
                     lbl: "Re",
                     tip: "Redo  Ctrl+Y",
-                    icon: "../assets/icons/redo.svg"
+                    icon: "../../assets/icons/redo.svg"
                 }
             ]
 

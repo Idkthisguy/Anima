@@ -22,8 +22,8 @@ Dialog {
         id: cp
         property bool isUpdating: false
         property real hue: 0.0
-        property real sat: 1.0
-        property real val: 0.8
+        property real sat: 0.0
+        property real val: 0.0
         property color current: Qt.hsva(hue, sat, val, 1.0)
 
         onCurrentChanged: {

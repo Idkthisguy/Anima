@@ -4,6 +4,8 @@ import QtQuick.Layouts
 import Anima.Backend
 import Anima.Components 1.0
 import "./ui"
+import "./ui/Viewport"
+import "./ui/Dialogs"
 import "./Timeline"
 
 ApplicationWindow {
@@ -59,9 +61,10 @@ ApplicationWindow {
     }
 
     menuBar: MenuBar {
-        z: 10
         background: Rectangle {
             color: pal.bg1
+            border.color: pal.border
+            border.width: 0
         }
 
         delegate: MenuBarItem {
@@ -77,89 +80,44 @@ ApplicationWindow {
                 radius: 3
             }
         }
-
         Menu {
             title: "File"
-            background: Rectangle {
-                color: pal.bg2
-                border.color: pal.border
-                border.width: 1
-                radius: 4
-            }
-
             Action {
                 text: "New Project"
                 shortcut: "Ctrl+N"
-                onTriggered: dlg.confirmNewDlg.open()
+                onTriggered: MainEngine.newProject()
             }
             Action {
                 text: "Open…"
                 shortcut: "Ctrl+O"
-                onTriggered: dlg.openFileDlg.open()
+                onTriggered: appDialogs.openFileDlg.open()
             }
-            MenuSeparator {
-                contentItem: Rectangle {
-                    implicitHeight: 1
-                    color: pal.border
-                }
-            }
+            MenuSeparator {}
             Action {
                 text: "Save"
                 shortcut: "Ctrl+S"
-                onTriggered: dlg.doSave()
+                onTriggered: appDialogs.doSave()
             }
             Action {
                 text: "Save As…"
                 shortcut: "Ctrl+Shift+S"
-                onTriggered: dlg.saveFileDlg.open()
+                onTriggered: appDialogs.saveFileDlg.open()
             }
-            MenuSeparator {
-                contentItem: Rectangle {
-                    implicitHeight: 1
-                    color: pal.border
-                }
+            MenuSeparator {}
+            Action {
+                text: "Export GIF (COMING SOON)"
             }
             Action {
-                text: "Export GIF (coming soon)"
+                text: "Export MP4 (COMING SOON)"
             }
-            Action {
-                text: "Export MP4 (coming soon)"
-            }
-            MenuSeparator {
-                contentItem: Rectangle {
-                    implicitHeight: 1
-                    color: pal.border
-                }
-            }
+            MenuSeparator {}
             Action {
                 text: "Exit"
                 onTriggered: Qt.quit()
             }
-
-            delegate: MenuItem {
-                contentItem: Text {
-                    text: parent.text
-                    color: parent.highlighted ? pal.acc : pal.text
-                    font.pixelSize: 12
-                    leftPadding: 8
-                    verticalAlignment: Text.AlignVCenter
-                }
-                background: Rectangle {
-                    color: parent.highlighted ? pal.bg4 : "transparent"
-                    implicitHeight: 28
-                }
-            }
         }
-
         Menu {
             title: "Edit"
-            background: Rectangle {
-                color: pal.bg2
-                border.color: pal.border
-                border.width: 1
-                radius: 4
-            }
-
             Action {
                 text: "Undo"
                 shortcut: "Ctrl+Z"
@@ -170,42 +128,15 @@ ApplicationWindow {
                 shortcut: "Ctrl+Y"
                 onTriggered: TL.redo()
             }
-            MenuSeparator {
-                contentItem: Rectangle {
-                    implicitHeight: 1
-                    color: pal.border
-                }
-            }
+            MenuSeparator {}
             Action {
                 text: "Clear Frame"
                 shortcut: "Delete"
                 onTriggered: TL.clearFrame()
             }
-
-            delegate: MenuItem {
-                contentItem: Text {
-                    text: parent.text
-                    color: parent.highlighted ? pal.acc : pal.text
-                    font.pixelSize: 12
-                    leftPadding: 8
-                    verticalAlignment: Text.AlignVCenter
-                }
-                background: Rectangle {
-                    color: parent.highlighted ? pal.bg4 : "transparent"
-                    implicitHeight: 28
-                }
-            }
         }
-
         Menu {
             title: "Animation"
-            background: Rectangle {
-                color: pal.bg2
-                border.color: pal.border
-                border.width: 1
-                radius: 4
-            }
-
             Action {
                 text: "Play / Pause"
                 shortcut: "Space"
@@ -225,20 +156,6 @@ ApplicationWindow {
                 text: "Add Frame"
                 shortcut: "Ctrl+J"
                 onTriggered: TL.addFrame()
-            }
-
-            delegate: MenuItem {
-                contentItem: Text {
-                    text: parent.text
-                    color: parent.highlighted ? pal.acc : pal.text
-                    font.pixelSize: 12
-                    leftPadding: 8
-                    verticalAlignment: Text.AlignVCenter
-                }
-                background: Rectangle {
-                    color: parent.highlighted ? pal.bg4 : "transparent"
-                    implicitHeight: 28
-                }
             }
         }
     }
@@ -295,6 +212,11 @@ ApplicationWindow {
             background: Rectangle {
                 color: parent.highlighted ? pal.bg4 : "transparent"
             }
+        }
+
+        Dialogs {
+            id: appDialogs
+            mainWindow: root
         }
     }
 

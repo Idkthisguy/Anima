@@ -29,11 +29,11 @@ qt_add_qml_module(appAnima_Pro
         Main.qml
         ui/AppPalette.qml
         ui/AppShortcuts.qml
-        ui/Toolbar.qml
-        ui/Viewport.qml
-        ui/PropertiesPanel.qml
-        ui/ColorPickerDialog.qml
-        ui/Dialogs.qml
+        ui/Viewport/Toolbar.qml
+        ui/Viewport/Viewport.qml
+        ui/Viewport/PropertiesPanel.qml
+        ui/Dialogs/ColorPickerDialog.qml
+        ui/Dialogs/Dialogs.qml
         Timeline/TimelinePanel.qml
     RESOURCES
         assets/icons/play.svg
