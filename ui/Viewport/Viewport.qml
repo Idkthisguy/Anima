@@ -196,8 +196,8 @@ Rectangle {
             id: infoTxt
             anchors.centerIn: parent
             text: {
-                var t = ["Brush", "Eraser", "Bucket", "Eyedrop"][MainEngine.tool];
-                return "Fr " + (TL.currentFrame + 1) + "/" + TL.frameCount + "  " + t + "  " + MainEngine.brushSize + "px";
+                var t = ["Brush", "Eraser", "Bucket", "Eyedrop"][MainEngine.tools.tool];
+                return "Fr " + (TL.currentFrame + 1) + "/" + TL.frameCount + "  " + t + "  " + MainEngine.tools.brushSize + "px";
             }
             color: "#a8a8c0"
             font.pixelSize: 11

@@ -42,19 +42,19 @@ Rectangle {
                         PropSlider {
                             Layout.fillWidth: true
                             label: "Size"
-                            value: MainEngine.brushSize
+                            value: MainEngine.tools.brushSize
                             from: 1
                             to: 100
                             display: ""
-                            onMoved: v => MainEngine.brushSize = Math.round(v)
+                            onMoved: v => MainEngine.tools.brushSize = Math.round(v)
                         }
 
                         NumInput {
-                            value: MainEngine.brushSize
+                            value: MainEngine.tools.brushSize
                             min: 1
                             max: 100
                             isFloat: false
-                            onValueSet: v => MainEngine.brushSize = v
+                            onValueSet: v => MainEngine.tools.brushSize = v
                         }
 
                         Text {
@@ -68,13 +68,13 @@ Rectangle {
                         Layout.fillWidth: true
                         height: 28
                         radius: 5
-                        color: MainEngine.color
+                        color: MainEngine.tools.color
                         border.color: pal.border
                         border.width: 1
 
                         Text {
                             anchors.centerIn: parent
-                            text: MainEngine.color
+                            text: MainEngine.tools.color
                             color: parent.color.hsvLightness > 0.5 ? "#111" : "#eee"
                             font.pixelSize: 9
                             font.family: "Courier New"
@@ -145,19 +145,19 @@ Rectangle {
                         PropSlider {
                             Layout.fillWidth: true
                             label: "Smoothing"
-                            value: MainEngine.smoothing
+                            value: MainEngine.tools.smoothing
                             from: 0.0
                             to: 0.95
                             display: ""
-                            onMoved: v => MainEngine.smoothing = v
+                            onMoved: v => MainEngine.tools.smoothing = v
                         }
 
                         NumInput {
-                            value: Math.round(MainEngine.smoothing * 100)
+                            value: Math.round(MainEngine.tools.smoothing * 100)
                             min: 0
                             max: 95
                             isFloat: false
-                            onValueSet: v => MainEngine.smoothing = v / 100
+                            onValueSet: v => MainEngine.tools.smoothing = v / 100
                         }
 
                         Text {

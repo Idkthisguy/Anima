@@ -1,7 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
-#include "engine.h"
+#include "Engine/enginemanager.h"
 #include "canvasprovider.h"
 
 int main(int argc, char* argv[]) {
@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
     app.setOrganizationName("AnimaStudio");
     QQuickStyle::setStyle("Basic");
 
-    Engine animaEngine;
+    EngineManager animaEngine;
 
     QQmlApplicationEngine qmlEngine;
     qmlRegisterSingletonInstance("Anima.Backend",    1, 0, "MainEngine", &animaEngine);

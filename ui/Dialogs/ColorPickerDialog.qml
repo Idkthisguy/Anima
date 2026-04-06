@@ -28,7 +28,7 @@ Dialog {
 
         onCurrentChanged: {
             if (!isUpdating) {
-                MainEngine.color = current.toString();
+                MainEngine.tools.color = current.toString();
             }
         }
 
@@ -44,12 +44,12 @@ Dialog {
         }
     }
 
-    onOpened: cp.fromHex(MainEngine.color)
+    onOpened: cp.fromHex(MainEngine.tools.color)
 
     Connections {
-        target: MainEngine
+        target: MainEngine.tools
         function onColorChanged() {
-            cp.fromHex(MainEngine.color);
+            cp.fromHex(MainEngine.tools.color);
         }
     }
 
@@ -244,7 +244,7 @@ Dialog {
                     font.family: "Courier New"
                     maximumLength: 6
                     onEditingFinished: {
-                        MainEngine.setColor("#" + text);
+                        MainEngine.tools.color.setColor("#" + text);
                         cp.fromHex("#" + text);
                     }
                 }
@@ -263,7 +263,7 @@ Dialog {
                     color: modelData
                     TapHandler {
                         onTapped: {
-                            MainEngine.setColor(modelData);
+                            MainEngine.tools.color.setColor(modelData);
                             cp.fromHex(modelData);
                         }
                     }

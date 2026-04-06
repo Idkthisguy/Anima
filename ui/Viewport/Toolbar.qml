@@ -179,7 +179,7 @@ Rectangle {
             height: 34
             radius: 6
             anchors.horizontalCenter: parent.horizontalCenter
-            color: MainEngine.color
+            color: MainEngine.tools.color
             border.color: Qt.lighter(pal.border, 1.4)
             border.width: 1.5
 

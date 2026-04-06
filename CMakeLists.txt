@@ -53,6 +53,16 @@ qt_add_qml_module(appAnima_Pro
         timeline.h  timeline.cpp
         canvasprovider.h canvasprovider.cpp
         Frames.h
+
+        SOURCES Engine/toolHandler.h Engine/toolHandler.cpp
+        SOURCES Engine/StrokeMath.h
+        fileIO/IOManager.h    fileIO/IOManager.cpp
+        SOURCES FileIO/anxhandler.h FileIO/anxhandler.cpp
+        SOURCES FileIO/Export/mp4Exporter.h FileIO/Export/mp4Exporter.cpp
+        SOURCES Timeline/timelinemanager.h Timeline/timelinemanager.cpp
+        Timeline/frameData.h
+        SOURCES Engine/enginemanager.h Engine/enginemanager.cpp
+
 )
 
 set_target_properties(appAnima_Pro PROPERTIES
