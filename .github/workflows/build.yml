@@ -2,20 +2,12 @@ name: Anima Build and Deploy action
 on:
   push:
     branches:
-      - anima-v2-deploy
-  pull_request:
-    branches:
-       - anima-v2-deploy
-  workflow_dispatch:
-    inputs:
-      release_name:
-        description: 'Version Name (e.g. v2.0.0)'
-        required: true
-        default: 'v2.0.0'
-      is_prerelease:
-        description: 'Is this a Pre-release?'
-        type: boolean
-        default: false
+      - dev
+      - main
+
+env:
+  TAG: v1.2.0
+  PRERELEASE: false
 
 jobs:
   build:

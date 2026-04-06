@@ -2,8 +2,10 @@
 ## The "Performance" Update
 ### I realized that the builds would be heavy on my PC even though it's just simple. So I deleted almost everything and rebuilt Anima from scratch using C++ and Qt. It was a lot of work, but this new Anima version is now faster, smaller, and way more powerful.
 
-## The "Better" Stuff
-**Insane Performance:** It doesn't matter if you're on a high-end gaming PC or a "potato" laptop from 2015. It should run smoothly now.
+Also this is the LAST version of Anima made in Electron, Anima is now moving on to [Qt](https://www.qt.io/) for better design, size, and performance.
+
+### Improvements
+- **Improved Code:** I don't think it's calleed refactoring but i did cahnge the code to be better ig
 
 **Tiny File Size:** The app is now way under 100MB. More room for your animations, less room taken by the software. (shocking 😲)
 
