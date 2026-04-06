@@ -1,19 +1,27 @@
-# What's New in v1.2.0
-Huge changes and improving (this is where i'm gonna lock in from now on)
+# What’s New in Anima v2.0.0
+## The "Performance" Update
+### I realized that the builds would be heavy on my PC even though it's just simple. So I deleted almost everything and rebuilt Anima from scratch using C++ and Qt. It was a lot of work, but this new Anima version is now faster, smaller, and way more powerful.
 
 Also this is the LAST version of Anima made in Electron, Anima is now moving on to [Qt](https://www.qt.io/) for better design, size, and performance.
 
 ### Improvements
 - **Improved Code:** I don't think it's calleed refactoring but i did cahnge the code to be better ig
 
-### Added
-- **Added GIF Export:** You can now export in GIF like in the [README](https://github.com/Idkthisguy/Anima/blob/main/README.md) Demos
-- **Added Resolution Choices:** You can now draw and export in a different resolution now for different platforms and formats
+**Tiny File Size:** The app is now way under 100MB. More room for your animations, less room taken by the software. (shocking 😲)
 
-### Changed
-- **Changed `desktop-renderer.js` to `renderer.js`**
+**Actually Lightweight:** No more fans spinning like a jet engine just because you opened the app, let your PC breathe a little.
 
-### ⚠️ Compatibility Note
-- **OS:** Tested on Windows 10 & 11.
-- **ARM64:** This build is experimental and unverified. Please report any bugs in [issues](https://github.com/Idkthisguy/Anima/issues)!
-- **Linux:** Testing.
+## New Features
+**The "Save Anything" System:** You can now save in the new `.anx` format, but don't worry—you can still open your old `.anima` files from v1
+
+**Pro Shortcuts:** I’ve added proper hotkeys (B for Brush, E for Eraser, etc.) so you can animate more comfortably.
+
+**Native Feel (might be for the nerds lol):** Because it’s built in C++, it feels like a real desktop app, not just a website in a window.
+
+## What’s Gone?
+**The old v1 files:** You can find them somewhere in this repo I guess..?
+
+A Note from the Creator (Me :D)
+I'm using this version to learn how to code in C++. It might have some bugs (it's a massive change!), so if it crashes, just let me know in the [Issues](https://github.com/Idkthisguy/Anima/issues) tab.
+
+Next up: Linux support and hopefully a mobile port!
