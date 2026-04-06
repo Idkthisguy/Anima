@@ -1,4 +1,5 @@
-name: Anima Build and Deploy action
+name: Build Anima
+
 on:
   push:
     branches:
@@ -10,69 +11,58 @@ env:
   PRERELEASE: false
 
 jobs:
-  build:
-    #strategy:
-      #matrix:
-        #os: [windows-latest, ubuntu-latest]
-
-    #runs-on: ${{ matrix.os }}
-
+  build-windows:
     runs-on: windows-latest
-
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v3
-        #with:
-            #version: '6.5.3'
-            #arch: ${{ matrix.os == 'windows-latest' && 'win64_msvc2019_64' || 'gcc_64' }}
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-            version: '6.8.3'
-            arch: 'win64_msvc2022_64'
-
-      - name: Setup MSVC (Windows Only)
-        #if: matrix.os == 'windows-latest'
-        uses: ilammy/msvc-dev-cmd@v1
-
-     # - name: Install Linux Deps
-       # if: matrix.os == 'ubuntu-latest'
-        #run: |
-         # sudo apt-get update
-         # sudo apt-get install -y libgl1-mesa-dev libxkbcommon-x11-0
-
-      - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build Project
-        run: cmake --build build --config Release
-
-      - name: Bundle Windows
-        #if: matrix.os == 'windows-latest'
-        run: windeployqt --qmldir . build/Release/Anima.exe
-
-      - name: Create ZIP
-        uses: thedoctor0/zip-release@main
+          node-version: 20
+      - run: npm install
+      - run: npm run dist:win -- --publish never
+      - uses: actions/upload-artifact@v4
         with:
-          type: 'zip'
-          directory: 'build/Release'
-          filename: Anima-v2.zip
+          name: windows-builds
+          path: dist/Anima-v*/*.exe
 
-      - name: Save Private Test Build
-        uses: actions/upload-artifact@v4
+  build-linux:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          name: Testing-Build
-          path: "**/*.zip"
+          node-version: 20
+      - run: npm install
+      - run: npm run dist:linux -- --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-builds
+          path: dist/Anima-v*/*.AppImage
 
-      - name: Create Official Release
-        if: github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@v1
+  release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
         with:
-          tag_name: ${{ github.event.inputs.release_name }}
-          name: Anima ${{ github.event.inputs.release_name }}
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: ${{ env.PRERELEASE == 'true' && format('Pre-release {0}', env.TAG) || format('Release {0}', env.TAG) }}
+          prerelease: ${{ env.PRERELEASE == 'true' }}
+          target_commitish: ${{ env.PRERELEASE == 'true' && 'dev' || 'main' }}
           body_path: CHANGELOG.md
-          prerelease: ${{ github.event.inputs.is_prerelease }}
-          files: "**/*.zip"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: artifacts/**/*
+          fail_on_unmatched_files: false
