@@ -1,0 +1,66 @@
+name: Build Mobile Apps
+on: [push]
+
+jobs:
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - run: npm install
+      - run: npx cap sync android
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: anima-android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  ios-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx cap add ios || true 
+      - run: npx cap sync ios
+
+      - name: Build and Package IPA
+        run: |
+          # 1. Build the actual app binary
+          xcodebuild -project ios/App/App.xcodeproj \
+                     -scheme App \
+                     -configuration Debug \
+                     -sdk iphoneos \
+                     -derivedDataPath build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     ENTITLEMENTS_REQUIRED=NO \
+                     clean build
+
+          # 2. Create the Payload folder structure for AltStore
+          mkdir -p Payload
+          cp -r build/Build/Products/Debug-iphoneos/App.app Payload/
+          
+          # 3. Zip it and rename to .ipa
+          zip -r Anima.ipa Payload
+          
+      - name: Upload IPA for Sideloading
+        uses: actions/upload-artifact@v4
+        with:
+          name: anima-ios-ipa
+          path: Anima.ipa

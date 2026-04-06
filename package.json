@@ -1,0 +1,100 @@
+{
+  "name": "anima",
+  "version": "1.2.0",
+  "description": "2D animation software",
+  "author": "idkthisguy",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:all": "electron-builder --win --linux"
+  },
+  "build": {
+    "appId": "com.idkthisguy.anima",
+    "productName": "Anima",
+    "compression": "maximum",
+    "directories": {
+      "output": "dist/Anima-v${version}"
+    },
+    "files": [
+      "**/*",
+      "!dist/*",
+      "!build/*",
+      "!node_modules/gsap/*"
+    ],
+    "fileAssociations": [
+      {
+        "ext": "anima",
+        "name": "Anima Project",
+        "description": "Anima Animation Project File",
+        "role": "Editor",
+        "icon": "icon.ico"
+      }
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "artifactName": "Anima-v${version}-win-${arch}.${ext}",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "Anima-v${version}-win-${arch}-portable.${ext}"
+    },
+    "linux": {
+      "icon": "icon.png",
+      "category": "Graphics",
+      "artifactName": "Anima-v${version}-linux-${arch}.${ext}",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "license": "LICENSE.txt",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Anima",
+      "uninstallDisplayName": "Anima Animation Tool",
+      "runAfterFinish": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "include": "build/installer.nsh",
+      "installerHeaderIcon": "icon.ico",
+      "installerSidebar": "build/sidebar-installer.bmp",
+      "uninstallerSidebar": "build/sidebar-uninstaller.bmp"
+    }
+  },
+  "devDependencies": {
+    "electron": "^40.6.1",
+    "electron-builder": "^26.8.1",
+    "electron-reloader": "^1.2.3",
+    "cross-env": "^10.1.0"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0",
+    "fluent-ffmpeg": "^2.1.3"
+  }
+}
