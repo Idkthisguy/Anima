@@ -108,7 +108,8 @@ ApplicationWindow {
                 text: "Export GIF (COMING SOON)"
             }
             Action {
-                text: "Export MP4 (COMING SOON)"
+                text: "Export MP4"
+                onTriggered: appDialogs.doMP4Export()
             }
             MenuSeparator {}
             Action {

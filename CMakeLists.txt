@@ -4,6 +4,9 @@ project(Anima_Pro VERSION 2.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(CheckIPOSupported)
+check_ipo_supported(RESULT supported OUTPUT error)
+
 set(PORTABLE_DIR "${CMAKE_BINARY_DIR}/Anima_Portable_Windows")
 
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2 Svg Core QuickEffects)
@@ -16,9 +19,21 @@ endif()
 qt_add_executable(appAnima_Pro
     WIN32
     main.cpp
-    engine.cpp
     canvasprovider.cpp
-    fileio.cpp
+    canvasprovider.h
+    Engine/enginemanager.cpp
+    Engine/enginemanager.h
+    Timeline/timelinemanager.cpp
+    Timeline/timelinemanager.h
+    FileIO/iomanager.cpp
+    FileIO/iomanager.h
+    FileIO/anxhandler.cpp
+    FileIO/anxhandler.h
+    FileIO/animafilehandler.cpp
+    FileIO/animafilehandler.h
+    FileIO/Export/mp4exporter.cpp
+    FileIO/Export/mp4exporter.h
+
     ${EXE_ICON}
 )
 
@@ -48,26 +63,35 @@ qt_add_qml_module(appAnima_Pro
         assets/icons/undo.svg
         assets/icons/redo.svg
     SOURCES
-        engine.h    engine.cpp
-        fileio.h    fileio.cpp
-        timeline.h  timeline.cpp
+
         canvasprovider.h canvasprovider.cpp
-        Frames.h
+
 
         SOURCES Engine/toolHandler.h Engine/toolHandler.cpp
         SOURCES Engine/StrokeMath.h
         fileIO/IOManager.h    fileIO/IOManager.cpp
         SOURCES FileIO/anxhandler.h FileIO/anxhandler.cpp
-        SOURCES FileIO/Export/mp4Exporter.h FileIO/Export/mp4Exporter.cpp
+        SOURCES
         SOURCES Timeline/timelinemanager.h Timeline/timelinemanager.cpp
         Timeline/frameData.h
         SOURCES Engine/enginemanager.h Engine/enginemanager.cpp
+        SOURCES FileIO/animafilehandler.h FileIO/animafilehandler.cpp
+        SOURCES FileIO/Export/mp4exporter.h FileIO/Export/mp4exporter.cpp
+        SOURCES Timeline/frameData.h
+        SOURCES FileIO/iomanager.h FileIO/iomanager.cpp
 
 )
 
 set_target_properties(appAnima_Pro PROPERTIES
     OUTPUT_NAME "Anima"
 )
+
+if(supported)
+    message(STATUS "LTO is supported and enabled!")
+    set_target_properties(appAnima_Pro PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(STATUS "LTO not supported: ${error}")
+endif()
 
 target_link_libraries(appAnima_Pro PRIVATE
     Qt6::Quick

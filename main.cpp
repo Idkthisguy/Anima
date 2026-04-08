@@ -21,6 +21,7 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonInstance("Anima.Backend",    1, 0, "TL",         animaEngine.timeline());
     qmlRegisterSingletonInstance("Anima.Backend",    1, 0, "IO",         animaEngine.fileio());
     qmlRegisterType<CanvasProvider>("Anima.Components", 1, 0, "DrawingCanvas");
+    qmlRegisterUncreatableType<ToolHandler>("Anima", 1, 0, "ToolHandler", "Access via Engine");
 
     QObject::connect(&qmlEngine, &QQmlApplicationEngine::objectCreationFailed,
                      &app, []{ QCoreApplication::exit(-1); }, Qt::QueuedConnection);

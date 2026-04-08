@@ -3,12 +3,12 @@
 #include <QCoreApplication>
 
 EngineManager::EngineManager(QObject* parent) : QObject(parent) {
-    connect(&m_timeline, &Timeline::imageChanged, this, [this]{
+    connect(&m_timeline, &timelineManager::imageChanged, this, [this]{
         emit frameUpdated(compositeFrame());
         m_fileio.markDirty();
     });
 
-    connect(&m_timeline, &Timeline::playingChanged, this, [this]{
+    connect(&m_timeline, &timelineManager::playingChanged, this, [this]{
         emit frameUpdated(compositeFrame());
     });
 
@@ -34,7 +34,6 @@ void EngineManager::endStroke() {
 }
 
 void EngineManager::paintAt(qreal x, qreal y) {
-    // Look how we ask the ToolHandler for the info!
     if (m_tools.tool() == ToolHandler::Eyedropper) { pickColor(x, y); return; }
 
     float oobDist = std::sqrt(std::pow(x - m_lastX, 2) + std::pow(y - m_lastY, 2));
@@ -45,7 +44,6 @@ void EngineManager::paintAt(qreal x, qreal y) {
 
     QImage& img = m_timeline.currentImage();
 
-    // If Bucket, use our new Math namespace!
     if (m_tools.tool() == ToolHandler::Bucket) {
         StrokeMath::floodFill(img, (int)x, (int)y, m_tools.rawColor());
         emit m_timeline.imageChanged();
@@ -90,13 +88,12 @@ void EngineManager::pickColor(qreal x, qreal y) {
     int py = std::clamp((int)y, 0, img.height()-1);
     QColor picked = img.pixelColor(px, py);
 
-    m_tools.setColor(picked.name()); // Tell the ToolHandler we picked a color!
+    m_tools.setColor(picked.name());
     emit colorPicked(picked.name());
 }
 
 QImage EngineManager::compositeFrame() const {
-    // Exactly the same logic as your old Engine
-    const QImage& cur = const_cast<Timeline&>(m_timeline).currentImage();
+    const QImage& cur = const_cast<timelineManager&>(m_timeline).currentImage();
     int w = cur.width(), h = cur.height();
     QImage out(w, h, QImage::Format_ARGB32_Premultiplied);
     out.fill(Qt::white);
@@ -131,7 +128,7 @@ void EngineManager::terminateAnima(int returnCode) { QCoreApplication::exit(retu
 
 void EngineManager::newProject() {
     m_timeline.clearAll();
-    m_fileio.setPath("");
+    //m_fileio.setPath("");
     m_fileio.markClean();
     emit frameUpdated(compositeFrame());
 }
@@ -144,23 +141,43 @@ bool EngineManager::saveProject(const QString& path) {
         proj.width = proj.frames.first().width();
         proj.height = proj.frames.first().height();
     }
-    return m_fileio.saveAs(proj, path);
+    return m_fileio.saveProjectAs(path, &m_timeline);
 }
 
-bool EngineManager::openProject(const QString& path) {
-    AnimaProject proj = m_fileio.open(path);
-    if (proj.frames.isEmpty()) return false;
-    m_timeline.clearAll();
-    m_timeline.deleteFrame(0);
-    for (const QImage& img : proj.frames) {
-        m_timeline.addFrame();
-        m_timeline.currentImage() = img;
-        m_timeline.next();
+/*void IOManager::openProject(const QString& path, timelineManager* timeline) {
+    AnimaProject proj;
+    if (path.endsWith(".anx")) {
+        proj = AnxHandler::load(path);
+    } else {
+        proj = AnimaFileHandler::load(path);
     }
-    m_timeline.goTo(0);
-    m_timeline.setFps(proj.fps);
-    m_fileio.setPath(path);
-    m_fileio.markClean();
+
+    if (proj.frames.isEmpty()) return;
+
+    timeline->clearAll();
+    timeline->setFps(proj.fps);
+
+    for(const auto& img : proj.frames) {
+        // This adds the loaded image to your timeline
+        timeline->addFrame();
+        timeline->currentImage() = img;
+        timeline->next();
+    }
+    timeline->goTo(0);
+
+    m_path = path;
+    emit currentPathChanged();
+    markClean();
+}*/
+
+bool EngineManager::openProject(const QString& path) {
+    m_fileio.openProject(path, &m_timeline);
+
     emit projectLoaded();
+    emit frameUpdated(compositeFrame());
     return true;
+}
+
+bool EngineManager::exportMP4(const QString& path) {
+    return m_fileio.exportToMP4(path, &m_timeline);
 }
