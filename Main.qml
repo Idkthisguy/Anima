@@ -213,11 +213,11 @@ ApplicationWindow {
             background: Rectangle {
                 color: parent.highlighted ? pal.bg4 : "transparent"
             }
-        }
 
-        Dialogs {
-            id: appDialogs
-            mainWindow: root
+            Dialogs {
+                id: appDialogs
+                mainWindow: root
+            }
         }
     }
 
