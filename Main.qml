@@ -49,6 +49,7 @@ ApplicationWindow {
     }
 
     AppShortcuts {
+        focus: true
         openFileDlg: dlg.openFileDlg
         saveFileDlg: dlg.saveFileDlg
         confirmNewDlg: dlg.confirmNewDlg
