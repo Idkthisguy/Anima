@@ -1,3 +1,6 @@
 .git/
 .qtcreator/
 build/
+build-linux/
+.github/
+bin/
