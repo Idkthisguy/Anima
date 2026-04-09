@@ -176,7 +176,14 @@ Rectangle {
                         bottom: 1
                         top: 120
                     }
-                    onEditingFinished: TL.fps = parseInt(text)
+
+                    onAccepted: {
+                        TL.fps = parseInt(text);
+                        root.focus = true;
+                    }
+                    onEditingFinished: {
+                        root.focus = true;
+                    }
                 }
             }
 
