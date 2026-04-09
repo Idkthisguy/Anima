@@ -108,7 +108,8 @@ ApplicationWindow {
                 text: "Export GIF (COMING SOON)"
             }
             Action {
-                text: "Export MP4 (COMING SOON)"
+                text: "Export MP4"
+                onTriggered: appDialogs.doMP4Export()
             }
             MenuSeparator {}
             Action {
@@ -212,11 +213,11 @@ ApplicationWindow {
             background: Rectangle {
                 color: parent.highlighted ? pal.bg4 : "transparent"
             }
-        }
 
-        Dialogs {
-            id: appDialogs
-            mainWindow: root
+            Dialogs {
+                id: appDialogs
+                mainWindow: root
+            }
         }
     }
 

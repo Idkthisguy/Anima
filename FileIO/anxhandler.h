@@ -1,12 +1,17 @@
 #ifndef ANXHANDLER_H
 #define ANXHANDLER_H
 
-#include <QObject>
+#include <QString>
+#include "iomanager.h"
 
-class AnxHandler
-{
+class AnxHandler {
 public:
-    AnxHandler();
+    static bool save(const QString& path, const AnimaProject& proj);
+    static AnimaProject load(const QString& path);
+
+private:
+    static QByteArray imageToBytes(const QImage& img);
+    static QImage bytesToImage(const QByteArray& data);
 };
 
-#endif // ANXHANDLER_H
+#endif

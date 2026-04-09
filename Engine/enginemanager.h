@@ -6,28 +6,30 @@
 #include <QTimer>
 #include <QPainter>
 #include "toolHandler.h"
-#include "../timeline.h" // Keep your original path for now
-#include "../fileio.h"   // Keep your original path for now
+#include "Timeline/timelinemanager.h"
+#include "FileIO/IOManager.h"
 
 class EngineManager : public QObject {
     Q_OBJECT
 
-    // We expose the ToolHandler directly to QML!
     Q_PROPERTY(ToolHandler* tools READ tools CONSTANT)
-    Q_PROPERTY(Timeline* timeline READ timeline CONSTANT)
-    Q_PROPERTY(FileIO* fileio READ fileio CONSTANT)
+    Q_PROPERTY(timelineManager* timeline READ timeline CONSTANT)
+    Q_PROPERTY(IOManager* fileio READ fileio CONSTANT)
 
 public:
     explicit EngineManager(QObject* parent = nullptr);
 
     ToolHandler* tools() { return &m_tools; }
-    Timeline* timeline() { return &m_timeline; }
-    FileIO* fileio() { return &m_fileio; }
+    timelineManager* timeline() { return &m_timeline; }
+    IOManager* fileio() { return &m_fileio; }
 
     Q_INVOKABLE void terminateAnima(int returnCode = 0);
     Q_INVOKABLE void newProject();
+
     Q_INVOKABLE bool saveProject(const QString& path);
     Q_INVOKABLE bool openProject(const QString& path);
+
+    Q_INVOKABLE bool exportMP4(const QString& path);
 
 public slots:
     void paintAt(qreal x, qreal y);
@@ -42,8 +44,8 @@ signals:
 
 private:
     ToolHandler m_tools;
-    Timeline m_timeline;
-    FileIO m_fileio;
+    timelineManager m_timeline;
+    IOManager m_fileio;
     QTimer m_tickTimer;
 
     bool m_inStroke = false;

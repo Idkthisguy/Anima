@@ -16,6 +16,10 @@ Item {
             MainEngine.saveProject(IO.currentPath);
     }
 
+    function doMP4Export() {
+        exportMP4Dlg.open();
+    }
+
     function urlToPath(url) {
         var s = url.toString();
         if (s.startsWith("file:///") && Qt.platform.os === "windows")
@@ -30,6 +34,7 @@ Item {
     property alias confirmNewDlg: confirmNewDlg
     property alias errToast: errToast
     property alias saveToast: saveToast
+    property alias exportMP4Dlg: exportMP4Dlg
 
     FileDialog {
         id: openFileDlg
@@ -54,6 +59,23 @@ Item {
                 path += ".anx";
             if (!MainEngine.saveProject(path))
                 errToast.show("Failed to save: " + path);
+        }
+    }
+
+    FileDialog {
+        id: exportMP4Dlg
+        title: "Export Animation as MP4"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["MP4 Video (*.mp4)"]
+
+        onAccepted: {
+            var path = urlToPath(selectedFile);
+
+            if (MainEngine.exportMP4(path)) {
+                saveToast.show("Exporting started...");
+            } else {
+                errToast.show("Export failed to start.");
+            }
         }
     }
 

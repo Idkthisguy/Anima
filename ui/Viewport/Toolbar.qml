@@ -100,7 +100,9 @@ Rectangle {
                         id: toolHov
                     }
                     TapHandler {
-                        onTapped: MainEngine.tool = modelData.id
+                        onTapped: {
+                            MainEngine.tools.tool = modelData.id;
+                        }
                     }
                     ToolTip.visible: toolHov.hovered
                     ToolTip.text: modelData.tip
