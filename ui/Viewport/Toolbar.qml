@@ -68,7 +68,7 @@ Rectangle {
                     height: 28
                     radius: 2
                     color: pal.acc
-                    visible: MainEngine.tool === modelData.id
+                    visible: MainEngine.tools.tool === modelData.id
                 }
 
                 Rectangle {

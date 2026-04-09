@@ -144,7 +144,7 @@ Rectangle {
                     border.color: "white"
                     border.width: 1
                     opacity: drawArea.containsMouse ? 0.8 : 0
-                    visible: MainEngine.tool !== 3
+                    visible: MainEngine.tools.tool !== 3
 
                     Rectangle {
                         anchors.centerIn: parent
