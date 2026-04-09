@@ -91,6 +91,10 @@ More release notes in the [Changelog](https://github.com/Idkthisguy/Anima/blob/a
 - Mobile tester
 - Desktop tester
 
+### ivagaguaig-source
+- Main Tester
+- Desktop tester
+
 ---
 
 ## License
