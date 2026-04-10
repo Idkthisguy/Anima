@@ -61,6 +61,17 @@ ApplicationWindow {
         id: colorPickerDlg
     }
 
+    function backToHome() {
+        var component = Qt.createComponent("MainMenu.qml");
+        if (component.status === Component.Ready) {
+            var homeWindow = component.createObject(null);
+            homeWindow.show();
+            root.close();
+        } else {
+            console.error("Home Error:", component.errorString());
+        }
+    }
+
     menuBar: MenuBar {
         background: Rectangle {
             color: pal.bg1
@@ -106,15 +117,19 @@ ApplicationWindow {
             }
             MenuSeparator {}
             Action {
-                text: "Export GIF (COMING SOON)"
-            }
-            Action {
                 text: "Export MP4"
                 onTriggered: appDialogs.doMP4Export()
+            }
+            Action {
+                text: "Export GIF (COMING SOON)"
             }
             MenuSeparator {}
             Action {
                 text: "Exit"
+                onTriggered: backToHome()
+            }
+            Action {
+                text: "Quit"
                 onTriggered: Qt.quit()
             }
         }

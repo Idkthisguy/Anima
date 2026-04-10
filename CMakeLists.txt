@@ -42,6 +42,7 @@ qt_add_qml_module(appAnima_Pro
     VERSION 2.0
     QML_FILES
         Main.qml
+        MainMenu.qml
         ui/AppPalette.qml
         ui/AppShortcuts.qml
         ui/Viewport/Toolbar.qml

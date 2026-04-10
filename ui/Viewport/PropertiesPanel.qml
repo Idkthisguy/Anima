@@ -377,7 +377,6 @@ Rectangle {
 
             Text {
                 anchors.centerIn: parent
-                text: "✓"
                 color: "white"
                 font.pixelSize: 9
                 visible: checked
