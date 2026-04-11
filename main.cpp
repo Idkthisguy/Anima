@@ -26,6 +26,13 @@ int main(int argc, char* argv[]) {
     QObject::connect(&qmlEngine, &QQmlApplicationEngine::objectCreationFailed,
                      &app, []{ QCoreApplication::exit(-1); }, Qt::QueuedConnection);
 
-    qmlEngine.loadFromModule("Anima_Pro", "Main");
+    const bool SKIP_MENU_FOR_DEBUG = false;
+
+    if (SKIP_MENU_FOR_DEBUG) {
+        qmlEngine.loadFromModule("Anima_Pro", "Main");
+    } else {
+        qmlEngine.loadFromModule("Anima_Pro", "MainMenu");
+    }
+
     return QCoreApplication::exec();
 }
