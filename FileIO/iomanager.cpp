@@ -4,6 +4,7 @@
 #include "anxhandler.h"
 #include "animafilehandler.h"
 #include "Export/mp4exporter.h"
+#include "Timeline/timelinemanager.h"
 
 IOManager::IOManager(QObject* parent) : QObject(parent) {
     QSettings settings("AnimaStudio", "Anima");
@@ -75,21 +76,22 @@ bool IOManager::openProject(const QString& path, timelineManager* timeline) {
     if (proj.frames.isEmpty()) return false;
 
     timeline->clearAll();
+    timeline->addFrame();
+
     timeline->setFps(proj.fps);
 
     for (int i = 0; i < proj.frames.size(); ++i) {
-        if (i > 0) {
-            timeline->addFrame();
-        }
-        timeline->goTo(i);
+        timeline->addFrame();
+        timeline->goTo(timeline->frameCount() - 1);
         timeline->currentImage() = proj.frames[i];
     }
+
+    timeline->deleteFrame(0);
 
     timeline->goTo(0);
     m_path = path;
     addToRecents(path);
     emit currentPathChanged();
-    markClean();
 
     return true;
 }
