@@ -91,7 +91,7 @@ Rectangle {
                 Image {
                     id: nextIcon
                     anchors.centerIn: parent
-                    source: "../assets/icons/arrowback.svg"
+                    source: "../assets/icons/play.svg"
                     width: 14
                     height: 14
                     sourceSize.width: 14
@@ -179,10 +179,10 @@ Rectangle {
 
                     onAccepted: {
                         TL.fps = parseInt(text);
-                        root.focus = true;
+                        root.forceActiveFocus();
                     }
                     onEditingFinished: {
-                        root.focus = true;
+                        root.forceActiveFocus();
                     }
                 }
             }
@@ -199,7 +199,6 @@ Rectangle {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "✓"
                         color: "white"
                         font.pixelSize: 10
                         visible: TL.looping
