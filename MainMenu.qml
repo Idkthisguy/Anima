@@ -173,6 +173,15 @@ ApplicationWindow {
             }
 
             Text {
+                text: "Idkthisguy's"
+                color: "white"
+                font.pixelSize: 18
+                font.weight: Font.Bold
+                Layout.alignment: Qt.AlignLeft
+                Layout.bottomMargin: 5
+            }
+
+            Text {
                 text: "Anima v2.0"
                 color: "white"
                 font.pixelSize: 36
@@ -244,7 +253,7 @@ ApplicationWindow {
                         id: linkHov
                     }
                     TapHandler {
-                        onTapped: Qt.openUrlExternally("https://github.com/Idkthisguy/Anima")
+                        onTapped: Qt.openUrlExternally("https://github.com/Idkthisguy/Anima/wiki")
                     }
                 }
 
@@ -262,6 +271,14 @@ ApplicationWindow {
                         onTapped: Qt.openUrlExternally("https://github.com/Idkthisguy/Anima")
                     }
                 }
+            }
+
+            Text {
+                text: "(c) 2026 Idkthisguy. Licensed under GNU GPL v3."
+                color: "#333336"
+                font.pixelSize: 10
+                Layout.alignment: Qt.AlignHCenter
+                opacity: 0.9
             }
         }
     }
